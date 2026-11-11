@@ -138,7 +138,8 @@ class CheckOut(BaseModel):
 class RequestOut(BaseModel):
     level: int
     label: str
-    excerpt: str = ""
+    excerpt: str = ""   # whole sentence(s) from ONE source, links defanged
+    source: str = ""    # "Subject" or "Body"
 
 
 class AnalyzeResponse(BaseModel):

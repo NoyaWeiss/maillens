@@ -24,6 +24,7 @@ function renderTestSection_() {
 }
 
 function onRenderTest(e) {
+  if (!isDevBuild_()) return notify_('Developer tools are not available in this build.');
   var v = e.parameters.v;
   var card = v === 'F' ? sampleV3Card_() : renderVariant_(v);
   return CardService.newActionResponseBuilder().setNavigation(CardService.newNavigation().pushCard(card)).build();

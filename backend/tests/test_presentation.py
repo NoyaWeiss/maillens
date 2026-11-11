@@ -90,9 +90,10 @@ def test_detailed_analysis_fields(name):
 
 def test_evidence_values_are_exact():
     t5 = {d.label: d.value for d in RESP["t5"].findings[0].details}
-    assert t5 == {"Sender": "billing@acmesupply.example", "Replies go to": "acme.supply.accounts@gmail.example"}
+    assert t5 == {"From": "billing@acmesupply.example", "Reply-To": "acme.supply.accounts@gmail.example",
+                  "Earlier messages from this From address": "no Reply-To or a different one"}
     t7 = {d.label: d.value for f in RESP["t7"].findings if f.signal == "S5" for d in f.details}
-    assert t7 == {"Resembles": "acmesupply.example", "Actual domain": "acmesupp1y.example"}
+    assert t7 == {"Resembles": "acmesupply.example", "From domain": "acmesupp1y.example"}
     t8 = {d.label: d.value for f in RESP["t8"].findings if f.signal == "S9" for d in f.details}
     assert t8 == {"Link text shows": "northwindbank[.]example", "Link opens": "login[.]northwind-verify[.]example"}
 

@@ -309,7 +309,8 @@
   "request": {
    "level": 1,
    "label": "Follow a generic call to action",
-   "excerpt": "or $1,250.00. Payment is due in 3 days. Pay invoice Questions? Visit our help center"
+   "excerpt": "\u2026 Pay invoice Questions?",
+   "source": "Body"
   },
   "pressure_cues": [],
   "reasons": [],
@@ -459,7 +460,8 @@
   "request": {
    "level": 2,
    "label": "Sign in through a link",
-   "excerpt": "you don't need to do anything. If not, sign in and review your account activity at accounts.cloud"
+   "excerpt": "\u2026 If not, sign in and review your account activity at accounts[.]cloudmail[.]example/security.",
+   "source": "Body"
   },
   "pressure_cues": [],
   "reasons": [],
@@ -771,11 +773,15 @@
     "summary": "It uses the name of someone you email, from a different address.",
     "details": [
      {
-      "label": "You know this name as",
+      "label": "Display name",
+      "value": "Dana Cohen"
+     },
+     {
+      "label": "Known address for this name",
       "value": "dana.cohen@northwind.example"
      },
      {
-      "label": "This email is from",
+      "label": "From address (this email)",
       "value": "dana.cohen.northwind@gmail.example"
      }
     ]
@@ -786,7 +792,8 @@
   "request": {
    "level": 2,
    "label": "Do an unexplained favor",
-   "excerpt": "Quick favor Are you at your desk? I need a quick fa"
+   "excerpt": "Are you at your desk? I need a quick favor, it's a bit urgent.",
+   "source": "Body"
   },
   "pressure_cues": [
    "urgent"
@@ -963,12 +970,16 @@
     "summary": "Replies now go to a different address than earlier messages in this thread.",
     "details": [
      {
-      "label": "Sender",
+      "label": "From",
       "value": "billing@acmesupply.example"
      },
      {
-      "label": "Replies go to",
+      "label": "Reply-To",
       "value": "acme.supply.accounts@gmail.example"
+     },
+     {
+      "label": "Earlier messages from this From address",
+      "value": "no Reply-To or a different one"
      }
     ]
    }
@@ -978,7 +989,8 @@
   "request": {
    "level": 3,
    "label": "Change payment or bank details",
-   "excerpt": "office supplies Hello, Please note our bank details have changed due to an audit. Kindly wire the INV-22"
+   "excerpt": "\u2026 Please note our bank details have changed due to an audit. Kindly wire the INV-2207 payment to our new account:",
+   "source": "Body"
   },
   "pressure_cues": [],
   "reasons": [
@@ -1149,7 +1161,8 @@
   "request": {
    "level": 3,
    "label": "Change payment or bank details",
-   "excerpt": "details Hello, From next month, please send payments to our new bank account. Updated IBAN: GB94 BARC 1020 1530 0934"
+   "excerpt": "\u2026 From next month, please send payments to our new bank account. Updated IBAN: GB94 BARC 1020 1530 0934 59.",
+   "source": "Body"
   },
   "pressure_cues": [],
   "reasons": [
@@ -1326,7 +1339,7 @@
       "value": "acmesupply.example"
      },
      {
-      "label": "Actual domain",
+      "label": "From domain",
       "value": "acmesupp1y.example"
      }
     ]
@@ -1364,11 +1377,15 @@
     "summary": "It uses the name of someone you email, from a different address.",
     "details": [
      {
-      "label": "You know this name as",
+      "label": "Display name",
+      "value": "Acme Supply Billing"
+     },
+     {
+      "label": "Known address for this name",
       "value": "billing@acmesupply.example"
      },
      {
-      "label": "This email is from",
+      "label": "From address (this email)",
       "value": "billing@acmesupp1y.example"
      }
     ]
@@ -1566,11 +1583,11 @@
     "summary": "The sender uses a known brand's name but not its domain.",
     "details": [
      {
-      "label": "Name shows",
+      "label": "Display name",
       "value": "Northwind Bank"
      },
      {
-      "label": "Actual domain",
+      "label": "From domain",
       "value": "northwindbank-alerts.example"
      }
     ]
@@ -1603,7 +1620,8 @@
   "request": {
    "level": 2,
    "label": "Sign in through a link",
-   "excerpt": "Action required: verify your account We detected unusual activity. Please si"
+   "excerpt": "\u2026 Please sign in to verify your account and password within 24 hours to avoid suspension.",
+   "source": "Body"
   },
   "pressure_cues": [
    "deadline",
@@ -1790,7 +1808,7 @@
       "value": "IT Helpdesk"
      },
      {
-      "label": "Actual sender",
+      "label": "From address",
       "value": "helpdesk@mailbox-support.example"
      }
     ]
@@ -1803,7 +1821,8 @@
   "request": {
    "level": 2,
    "label": "Sign in through a link",
-   "excerpt": "r mailbox has reached 98% of its quota. Log in with your email password to keep receiving mail: Increase quota"
+   "excerpt": "\u2026 Log in with your email password to keep receiving mail: Increase quota",
+   "source": "Body"
   },
   "pressure_cues": [],
   "reasons": [
@@ -1972,7 +1991,8 @@
   "request": {
    "level": 3,
    "label": "Change payment or bank details",
-   "excerpt": "details Hello, From next month, please send payments to our new bank account. Updated IBAN: GB94 BARC 1020 1530 0934"
+   "excerpt": "\u2026 From next month, please send payments to our new bank account. Updated IBAN: GB94 BARC 1020 1530 0934 59.",
+   "source": "Body"
   },
   "pressure_cues": [],
   "reasons": [
@@ -2137,7 +2157,8 @@
   "request": {
    "level": 1,
    "label": "Follow a generic call to action",
-   "excerpt": "or $1,250.00. Payment is due in 3 days. Pay invoice Questions? Visit our help center"
+   "excerpt": "\u2026 Pay invoice Questions?",
+   "source": "Body"
   },
   "pressure_cues": [],
   "reasons": [],

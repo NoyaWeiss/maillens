@@ -15,6 +15,7 @@ var BIDI_VARIANTS = [
 ];
 
 function onBidiTest() {
+  if (!isDevBuild_()) return notify_('Developer tools are not available in this build.');
   var card = CardService.newCardBuilder().setHeader(CardService.newCardHeader().setTitle('Text direction test (dev)'));
   card.addSection(CardService.newCardSection().addWidget(CardService.newTextParagraph().setText(
     'Each variant shows the same sample in a paragraph, a decorated row (bold title, text, labels) and a ' +

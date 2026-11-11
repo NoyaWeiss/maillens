@@ -56,7 +56,13 @@ async def _send_413(send: Send) -> None:
 
 
 class RateLimiter:
-    """Sliding-window limiter keyed by client. In-memory: fine for a single-instance prototype."""
+    """Sliding-window limiter keyed by client. In-memory: fine for a single-instance prototype.
+
+    Runs BEFORE the API-key check, so key guessing is rate-limited too. The client table is
+    bounded (MAX_CLIENTS) so many distinct source addresses can't grow memory without limit.
+    """
+
+    MAX_CLIENTS = 10_000
 
     def __init__(self, per_minute: int) -> None:
         self.per_minute = per_minute
@@ -65,6 +71,15 @@ class RateLimiter:
     def check(self, request: Request) -> None:
         key = request.client.host if request.client else "unknown"
         now = time.monotonic()
+        if len(self._hits) > self.MAX_CLIENTS:
+            # First drop clients idle for a minute; if still over the cap (a burst from many
+            # addresses), drop the least recently seen. Bounded memory beats perfect fairness here.
+            for k in [k for k, v in self._hits.items() if not v or now - v[-1] > 60]:
+                del self._hits[k]
+            if len(self._hits) > self.MAX_CLIENTS:
+                by_age = sorted(self._hits, key=lambda k: self._hits[k][-1] if self._hits[k] else 0)
+                for k in by_age[: len(self._hits) - self.MAX_CLIENTS]:
+                    del self._hits[k]
         hits = self._hits[key]
         while hits and now - hits[0] > 60:
             hits.popleft()

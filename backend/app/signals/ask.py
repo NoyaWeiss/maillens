@@ -105,6 +105,7 @@ class AskResult:
     level: int = 0
     pattern: Pattern | None = None
     excerpt: str = ""
+    source: str = ""          # "Subject" or "Body": where the quoted text came from
     pressure: bool = False
     cues: list[str] | None = None
     note: str = ""
@@ -128,7 +129,10 @@ def s13_s14(ctx: Context) -> AskResult:
                                                   window, re.IGNORECASE):
                 continue  # guard: messages that deliver a code are not requests for one
             out.level, out.pattern = p.level, p
-            out.excerpt = " ".join(text[max(0, m.start() - 40): m.end() + 40].split())
+            subj_len = len(ctx.req.message.subject)
+            if m.start() < subj_len:  # quote the body instead when it contains the same request
+                m = next((b for b in p.regex.finditer(text, subj_len + 1)), m)
+            out.source, out.excerpt = quote(text, m.start(), m.end(), subj_len)
             break
 
     if ctx.is_bulk:
@@ -140,3 +144,46 @@ def s13_s14(ctx: Context) -> AskResult:
         out.cues.insert(0, "secrecy")
     out.pressure = secrecy or len(out.cues) >= 2
     return out
+
+
+# ---------------------------------------------------------------- quotes (presentation only)
+QUOTE_MAX = 220
+_SENTENCE_END = re.compile(r"[.!?](?=\s)|\n")
+_URL = re.compile(r"\b(?:https?|ftp)://[^\s<>\"']+", re.IGNORECASE)
+_HOST = re.compile(r"\b(?:[a-z0-9-]{1,63}\.)+[a-z]{2,24}\b", re.IGNORECASE)
+
+
+def defang_text(text: str) -> str:
+    """Neutralizes URLs and host names inside quoted email text so nothing can render as a link."""
+    def url(m: re.Match) -> str:
+        u = m.group(0).rstrip(".,;:!?)")
+        return u.replace("http", "hxxp", 1).replace("ftp", "fxp", 1).replace(".", "[.]") + m.group(0)[len(u):]
+    text = _URL.sub(url, text)
+    return _HOST.sub(lambda m: m.group(0).replace(".", "[.]"), text)
+
+
+def quote(text: str, start: int, end: int, subject_len: int) -> tuple[str, str]:
+    """Quotes the whole sentence(s) around a match, from the Subject OR the Body, never both.
+
+    `text` is "subject\nbody" as scanned by detection; detection itself is unchanged.
+    Long quotes are cut at a word boundary with an ellipsis instead of mid-word.
+    """
+    if start < subject_len:
+        source, seg_start, seg_end = "Subject", 0, subject_len
+    else:
+        source, seg_start, seg_end = "Body", subject_len + 1, len(text)
+    seg = text[seg_start:seg_end]
+    a, b = start - seg_start, end - seg_start
+    left = max((m.end() for m in _SENTENCE_END.finditer(seg, 0, a)), default=0)
+    right_m = _SENTENCE_END.search(seg, b)
+    right = right_m.end() if right_m else len(seg)
+    nxt = _SENTENCE_END.search(seg, right)
+    if nxt and len(" ".join(seg[left:nxt.end()].split())) <= QUOTE_MAX:
+        right = nxt.end()
+    q = " ".join(seg[left:right].split())
+    if len(q) > QUOTE_MAX:
+        cut = q[:QUOTE_MAX].rsplit(" ", 1)[0]
+        q = cut.rstrip(",;:") + " …"
+    if left > 0:
+        q = "… " + q
+    return source, defang_text(q)

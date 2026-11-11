@@ -201,7 +201,10 @@ function buildTechnicalCard_(r) {
     var req = (r.reasons || []).filter(function (x) { return x.basis === 'Based on the wording'; })[0];
     evidence.push(row_(reasonIcon_(req ? req.title : r.request.label), req ? req.title : r.request.label,
       req ? req.summary : '', 'Based on the wording'));
-    if (r.request.excerpt) evidence.push(detailRow_('Quoted from the email', '“' + r.request.excerpt + '”'));
+    if (r.request.excerpt) {
+      evidence.push(detailRow_('Quoted from the ' + (r.request.source === 'Subject' ? 'subject line' : 'message body'),
+        '“' + r.request.excerpt + '”'));
+    }
   }
   if (!evidence.length) {
     evidence.push(CardService.newTextParagraph().setText(ltr_("Nothing contradicted what the email claims.")));

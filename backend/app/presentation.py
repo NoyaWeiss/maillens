@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from .decision import Decision
 from .model import Finding
 from .schemas import Basis, Verdict
-from .signals.ask import AskResult
+from .signals.ask import AskResult, defang_text
 
 BASIS_TAG = {Basis.OBSERVED: "Seen in this email", Basis.MAILBOX: "From your email history",
              Basis.HEURISTIC: "Based on the wording"}
@@ -321,22 +321,25 @@ def evidence_details(f: Finding, ctx) -> list[tuple[str, str]]:
     if k == "auth_failed":
         pairs = [("From domain", s.domain), ("Result", f.reality.removeprefix("Authentication failed: "))]
     elif k.startswith("reply_"):
-        pairs = [("Sender", s.address), ("Replies go to", rt.address if rt else "")]
+        pairs = [("From", s.address), ("Reply-To", rt.address if rt else "")]
+        if k == "reply_mid_thread":
+            pairs.append(("Earlier messages from this From address", "no Reply-To or a different one"))
     elif k == "display_embedded_address":
-        pairs = [("Name shows", f.excerpt), ("Actual sender", s.address)]
+        pairs = [("Display name", f.excerpt), ("From address", s.address)]
     elif k == "display_brand_mismatch":
-        pairs = [("Name shows", s.display), ("Actual domain", s.reg)]
+        pairs = [("Display name", s.display), ("From domain", s.reg)]
     elif k == "display_role_only":
-        pairs = [("Display name", s.display), ("Actual sender", s.address)]
+        pairs = [("Display name", s.display), ("From address", s.address)]
     elif k == "known_name_new_address":
         known = sorted((ctx.req.relationship.name_match_addresses if ctx.req.relationship else []))[:2]
-        pairs = [("You know this name as", ", ".join(known)), ("This email is from", s.address)]
+        pairs = [("Display name", s.display), ("Known address for this name", ", ".join(known)),
+                 ("From address (this email)", s.address)]
     elif k.startswith("lookalike_"):
-        pairs = [("Resembles", _m(r"^Looks like (\S+)", f.claim)), ("Actual domain", s.reg)]
+        pairs = [("Resembles", _m(r"^Looks like (\S+)", f.claim)), ("From domain", s.reg)]
     elif k == "thread_fake_reply":
         pairs = [("Subject", f.excerpt)]
     elif k == "thread_new_sender":
-        pairs = [("Sender", s.address)]
+        pairs = [("From address", s.address)]
     elif k == "thread_signer_changed":
         pairs = [("Signature", f.reality)]
     elif k == "link_text_mismatch":
@@ -347,7 +350,7 @@ def evidence_details(f: Finding, ctx) -> list[tuple[str, str]]:
     elif k.startswith("attach_"):
         pairs = [("File", f.excerpt)]
     elif k.startswith("hidden_"):
-        pairs = [("Hidden text", f.excerpt)]
+        pairs = [("Hidden text", defang_text(f.excerpt))]
     else:
         pairs = []
     return [(label, value[:160]) for label, value in pairs if value]

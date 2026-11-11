@@ -52,3 +52,34 @@ def test_status_requires_key(client, headers):
     assert client.get("/v1/status").status_code == 401
     r = client.get("/v1/status", headers=headers)
     assert r.status_code == 200 and r.json() == {"status": "ok"}
+
+
+def test_rate_limit_rejects_after_quota_and_runs_before_auth():
+    from fastapi import HTTPException
+    from starlette.requests import Request
+
+    from app.security import RateLimiter
+    limiter = RateLimiter(per_minute=3)
+    req = Request({"type": "http", "client": ("203.0.113.9", 1), "headers": []})
+    for _ in range(3):
+        limiter.check(req)
+    try:
+        limiter.check(req)
+        raise AssertionError("4th request should be rejected")
+    except HTTPException as e:
+        assert e.status_code == 429
+
+
+def test_rate_limiter_memory_is_bounded():
+    from starlette.requests import Request
+
+    from app.security import RateLimiter
+    limiter = RateLimiter(per_minute=5)
+    limiter.MAX_CLIENTS = 100
+    for i in range(500):
+        limiter.check(Request({"type": "http", "client": (f"198.51.{i // 256}.{i % 256}", 1), "headers": []}))
+    assert len(limiter._hits) <= 101 + 1
+
+
+def test_dev_probe_endpoint_absent_unless_enabled(client, headers):
+    assert client.post("/v1/dev/probe-report", json=[], headers=headers).status_code == 404

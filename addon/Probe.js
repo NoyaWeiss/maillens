@@ -4,6 +4,7 @@
  */
 
 function onRunProbe(e) {
+  if (!isDevBuild_()) return notify_('Developer tools are not available in this build.');
   var rows = [];
   var t0 = Date.now();
   function add(gate, ok, detail) { rows.push({ gate: gate, ok: ok, detail: detail }); }

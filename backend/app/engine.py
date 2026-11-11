@@ -99,7 +99,7 @@ def analyze(req: AnalyzeRequest, request_id: str) -> tuple[AnalyzeResponse, Deci
         findings=[_out(f, ctx) for f in sorted(d.kept, key=lambda f: (-f.level, f.signal))],
         also_observed=[_out(f, ctx) for f in d.also_observed],
         suppressed=list(dict.fromkeys(notes))[:30],
-        request=RequestOut(level=ask.level, label=ask.pattern.label, excerpt=ask.excerpt[:200])
+        request=RequestOut(level=ask.level, label=ask.pattern.label, excerpt=ask.excerpt[:240], source=ask.source)
         if ask.pattern else None,
         pressure_cues=ask.cues or [],
         reasons=[ReasonOut(title=r.title, summary=r.summary, basis=r.basis) for r in pres["reasons"]],
