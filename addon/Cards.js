@@ -15,8 +15,8 @@
  * Every string from the email or backend is HTML-escaped before it is wrapped.
  */
 
-var LRI = '⁦';
-var PDI = '⁩';
+var LRI = '\u2066';
+var PDI = '\u2069';
 var VERDICT_STYLE = {
   HIGH: { label: 'High risk', color: '#c5221f', icon: 'gpp_bad', why: 'Why this email is suspicious' },
   SUSPICIOUS: { label: 'Suspicious', color: '#b06000', icon: 'warning', why: 'Why this needs a second look' },

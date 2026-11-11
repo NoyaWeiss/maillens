@@ -9,9 +9,9 @@ var BIDI_SAMPLE = 'Replies go to a different address. 1. Verify by phone (75/100
 
 var BIDI_VARIANTS = [
   { id: 'A', name: 'plain (no control characters)', wrap: function (s) { return s; } },
-  { id: 'B', name: 'LRM at start and end (U+200E)', wrap: function (s) { return '‎' + s + '‎'; } },
-  { id: 'C', name: 'LRI ... PDI isolate (U+2066/2069)', wrap: function (s) { return '⁦' + s + '⁩'; } },
-  { id: 'D', name: 'LRE ... PDF embedding (U+202A/202C)', wrap: function (s) { return '‪' + s + '‬'; } }
+  { id: 'B', name: 'LRM at start and end (U+200E)', wrap: function (s) { return '\u200E' + s + '\u200E'; } },
+  { id: 'C', name: 'LRI ... PDI isolate (U+2066/2069)', wrap: function (s) { return '\u2066' + s + '\u2069'; } },
+  { id: 'D', name: 'LRE ... PDF embedding (U+202A/202C)', wrap: function (s) { return '\u202A' + s + '\u202C'; } }
 ];
 
 function onBidiTest() {
