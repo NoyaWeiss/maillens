@@ -2,9 +2,10 @@
 
 from .decision import Decision, decide, explain_gate
 from .model import Context, Finding, SignalResult
-from .narrative import ARCHETYPES, actions, archetype, headline, story
-from .schemas import (AnalyzeRequest, AnalyzeResponse, Basis, CheckOut, CheckState, FindingOut, Group,
-                      RequestOut)
+from . import presentation
+from .narrative import ARCHETYPES, archetype, story
+from .schemas import (ActionOut, AnalyzeRequest, AnalyzeResponse, Basis, CheckOut, CheckState, FindingOut,
+                      Group, ReasonOut, RequestOut)
 from .signals import auth as s1
 from .signals.ask import s13_s14
 from .signals.dest import s9_link_deception, s10_url_construction
@@ -25,7 +26,7 @@ ASSUMPTIONS = [
     "\"Known\" means you sent mail to that address or domain recently; it is not a statistical model.",
     "The bulk-mail flag (List-Unsubscribe/Precedence) only downgrades weak findings; it never hides "
     "level-3 or authentication findings.",
-    "Score is a position within the verdict band, not a probability.",
+    "The risk index (0-100) is a position within the verdict band, not a probability that the email is malicious.",
 ]
 
 
@@ -38,7 +39,7 @@ def _s1(ctx: Context) -> SignalResult:
     lvl = s1.level(ctx.auth)
     if lvl:
         a = ctx.auth
-        r.findings.append(Finding(
+        r.findings.append(Finding.of("auth_failed", 
             "S1", Group.AUTH, sender_entity(ctx), lvl, Basis.OBSERVED,
             claim=f"Sent by {ctx.sender.domain or 'the From domain'}",
             reality=f"Authentication failed: DMARC {a.dmarc or 'none'} (policy {a.dmarc_policy or 'none'}), "
@@ -54,8 +55,10 @@ SIGNALS = [("S1", _s1), ("S2", s2_reply_to), ("S3", s3_display_name), ("S4", s4_
 
 
 def _out(f: Finding) -> FindingOut:
+    title, summary = presentation.finding_text(f)
     return FindingOut(signal=f.signal, group=f.group, entity=f.entity, level=f.level, basis=f.basis,
-                      claim=f.claim[:300], reality=f.reality[:300], excerpt=f.excerpt[:160])
+                      claim=f.claim[:300], reality=f.reality[:300], excerpt=f.excerpt[:160],
+                      title=title, summary=summary)
 
 
 def analyze(req: AnalyzeRequest, request_id: str) -> tuple[AnalyzeResponse, Decision]:
@@ -87,9 +90,10 @@ def analyze(req: AnalyzeRequest, request_id: str) -> tuple[AnalyzeResponse, Deci
     else:
         confidence = "Full"
 
+    pres = presentation.build(d, ask, arch, ran)
     resp = AnalyzeResponse(
-        request_id=request_id, verdict=d.verdict, score=d.score, headline=headline(d, ask, arch),
-        archetype=ARCHETYPES[arch], pathway=d.pathway, gate=d.gate, gate_explanation=explain_gate(d),
+        request_id=request_id, verdict=d.verdict, score=d.score, headline=pres["summary"],
+        category=pres["category"], archetype=ARCHETYPES[arch], pathway=d.pathway, gate=d.gate, gate_explanation=explain_gate(d),
         vector=d.vector, confidence=confidence, coverage_ran=ran, coverage_applicable=ran + unavailable,
         findings=[_out(f) for f in sorted(d.kept, key=lambda f: (-f.level, f.signal))],
         also_observed=[_out(f) for f in d.also_observed],
@@ -97,7 +101,9 @@ def analyze(req: AnalyzeRequest, request_id: str) -> tuple[AnalyzeResponse, Deci
         request=RequestOut(level=ask.level, label=ask.pattern.label, excerpt=ask.excerpt[:200])
         if ask.pattern else None,
         pressure_cues=ask.cues or [],
-        story=story(d, ask, arch), actions=actions(d, ask, arch),
+        reasons=[ReasonOut(title=r.title, summary=r.summary, basis=r.basis) for r in pres["reasons"]],
+        impact=pres["impact"], story=story(d, ask, arch),
+        actions=[ActionOut(title=a.title, detail=a.detail) for a in pres["actions"]],
         checks=[CheckOut(id=k, name=CHECK_NAMES[k], state=states[k]) for k in CHECK_NAMES],
         out_of_scope=OUT_OF_SCOPE, assumptions=ASSUMPTIONS,
     )

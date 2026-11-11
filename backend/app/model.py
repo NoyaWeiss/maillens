@@ -19,6 +19,13 @@ class Finding:
     claim: str
     reality: str
     excerpt: str = ""
+    # Presentation key (e.g. "reply_mid_thread"): selects the user-facing title and summary.
+    # Never used by sorting, deduplication or any decision.
+    kind: str = ""
+
+    @classmethod
+    def of(cls, kind: str, *args, **kwargs) -> "Finding":
+        return cls(*args, kind=kind, **kwargs)
 
 
 @dataclass

@@ -106,6 +106,19 @@ class FindingOut(BaseModel):
     claim: str
     reality: str
     excerpt: str = ""
+    title: str = ""     # presentation: short, address-free
+    summary: str = ""   # presentation: one neutral sentence
+
+
+class ReasonOut(BaseModel):
+    title: str
+    summary: str
+    basis: str
+
+
+class ActionOut(BaseModel):
+    title: str
+    detail: str
 
 
 class CheckOut(BaseModel):
@@ -125,7 +138,8 @@ class AnalyzeResponse(BaseModel):
     request_id: str
     verdict: Verdict
     score: int | None
-    headline: str
+    headline: str                       # one-sentence summary (main card)
+    category: str                       # hedged attack category, or a status line for Low/Inconclusive
     archetype: str
     pathway: str | None
     gate: str | None
@@ -139,8 +153,10 @@ class AnalyzeResponse(BaseModel):
     suppressed: list[str]               # guard notes, e.g. "S9 suppressed: bulk mail"
     request: RequestOut | None
     pressure_cues: list[str]
+    reasons: list[ReasonOut]            # <=2, main card
+    impact: str                         # cautious consequence sentence; empty for Low
     story: list[str]
-    actions: list[str]
+    actions: list[ActionOut]            # <=2, main card
     checks: list[CheckOut]
     out_of_scope: list[str]
     assumptions: list[str]

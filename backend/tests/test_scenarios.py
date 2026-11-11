@@ -36,7 +36,7 @@ def test_demo_mailbox_outcomes(key, thread, verdict, gate):
 def test_t2_low_has_advisory():
     r = run("t2")
     assert r.request and r.request.level == 2
-    assert "directly" in r.actions[0]
+    assert "directly" in r.actions[0].title + r.actions[0].detail
 
 
 def test_t5_without_thread_degrades_to_suspicious():

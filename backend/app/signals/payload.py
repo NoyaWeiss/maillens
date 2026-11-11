@@ -33,24 +33,24 @@ def s11_attachments(ctx: Context) -> SignalResult:
             continue
         last, ent = exts[-1], f"file:{a.name.lower()[:120]}"
         if last in EXECUTABLE and len(exts) >= 2 and exts[-2] in DECOY:
-            r.findings.append(Finding("S11", Group.PAYLOAD, ent, 3, Basis.OBSERVED,
+            r.findings.append(Finding.of("attach_double_ext", "S11", Group.PAYLOAD, ent, 3, Basis.OBSERVED,
                                       claim=f"Looks like a .{exts[-2]} document", excerpt=a.name,
                                       reality=f"It is really a .{last} program disguised with a double extension"))
         elif last in EXECUTABLE:
-            r.findings.append(Finding("S11", Group.PAYLOAD, ent, 2, Basis.OBSERVED, claim="An attachment",
+            r.findings.append(Finding.of("attach_executable", "S11", Group.PAYLOAD, ent, 2, Basis.OBSERVED, claim="An attachment",
                                       reality=f"A .{last} file can run code on your computer", excerpt=a.name))
         elif last in HTML_LIKE:
             risky = ctx.familiarity == "1" or not ctx.auth.passed
-            r.findings.append(Finding(
+            r.findings.append(Finding.of("attach_html", 
                 "S11", Group.PAYLOAD, ent, 2 if risky else 1, Basis.OBSERVED, claim="A document attachment",
                 reality=f"A .{last} file opens as a web page and can host a fake sign-in form", excerpt=a.name))
             if not risky:
                 r.notes.append("S11 HTML attachment kept at level 1: known, authenticated sender")
         elif last in MACRO_OFFICE:
-            r.findings.append(Finding("S11", Group.PAYLOAD, ent, 1, Basis.OBSERVED, claim="An Office document",
+            r.findings.append(Finding.of("attach_macro", "S11", Group.PAYLOAD, ent, 1, Basis.OBSERVED, claim="An Office document",
                                       reality=f"A macro-enabled .{last} file", excerpt=a.name))
         elif last in ARCHIVE and re.search(r"\bpassword\b", body):
-            r.findings.append(Finding("S11", Group.PAYLOAD, ent, 1, Basis.OBSERVED, claim="An archive",
+            r.findings.append(Finding.of("attach_protected_archive", "S11", Group.PAYLOAD, ent, 1, Basis.OBSERVED, claim="An archive",
                                       reality="Password-protected archives hide their contents from scanners",
                                       excerpt=a.name))
     return r
@@ -73,7 +73,7 @@ def s12_obfuscation(ctx: Context) -> SignalResult:
         return r
     for seg in ctx.body.hidden:
         if m := _SCANNER_BAIT.search(seg.text):
-            r.findings.append(Finding(
+            r.findings.append(Finding.of("hidden_scanner_bait", 
                 "S12", Group.PAYLOAD, "body", 3, Basis.OBSERVED,
                 claim="Hidden text you cannot see", reality="It contains instructions aimed at automated "
                                                             "security scanners, trying to get the email marked safe",
@@ -87,13 +87,13 @@ def s12_obfuscation(ctx: Context) -> SignalResult:
                 r.notes.append("S12 ignored short hidden preheader")
                 continue
             if len(seg.text) >= 200 and (_KEYWORDS.search(seg.text) or hidden_links):
-                r.findings.append(Finding(
+                r.findings.append(Finding.of("hidden_block", 
                     "S12", Group.PAYLOAD, "body", 2, Basis.OBSERVED, claim="Hidden text you cannot see",
                     reality=f"A {len(seg.text)}-character hidden block containing links or sensitive keywords",
                     excerpt=seg.text[:120]))
                 break
     if zw := zero_width_in_links(ctx):
-        r.findings.append(Finding(
+        r.findings.append(Finding.of("hidden_zero_width", 
             "S12", Group.PAYLOAD, "body", 2, Basis.OBSERVED, claim="A normal-looking link",
             reality="Invisible zero-width characters are inserted in the link to dodge filters",
             excerpt=zw[0][:120].encode("unicode_escape").decode()))

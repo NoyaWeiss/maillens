@@ -59,7 +59,7 @@ def s9_link_deception(ctx: Context) -> SignalResult:
         level = 1 if ctx.is_bulk else 2
         if ctx.is_bulk:
             r.notes.append("S9 downgraded to level 1: bulk mail")
-        r.findings.append(Finding(
+        r.findings.append(Finding.of("link_text_mismatch", 
             "S9", Group.DEST, f"domain:{href_reg}", level, Basis.OBSERVED,
             claim=f"Link text shows {defang(shown_reg)}",
             reality=f"The link actually opens {defang(host)}", excerpt=defang(link.href[:150])))
@@ -76,13 +76,13 @@ def s10_url_construction(ctx: Context) -> SignalResult:
         reg = registrable(host)
         ent, ex = f"domain:{reg}", defang(link.href[:150])
         if userinfo and re.search(r"[a-z0-9-]+\.[a-z]{2,}", userinfo, re.IGNORECASE):
-            r.findings.append(Finding(
+            r.findings.append(Finding.of("link_userinfo_trick", 
                 "S10", Group.DEST, ent, 3, Basis.OBSERVED, claim=f"Link appears to point to {defang(userinfo)}",
                 reality=f"Everything before '@' is ignored; it really opens {defang(host)}", excerpt=ex))
             continue
         try:
             ipaddress.ip_address(host.strip("[]"))
-            r.findings.append(Finding("S10", Group.DEST, ent, 2, Basis.OBSERVED, claim="A web link",
+            r.findings.append(Finding.of("link_ip_host", "S10", Group.DEST, ent, 2, Basis.OBSERVED, claim="A web link",
                                       reality=f"Points to a raw IP address ({defang(host)}), not a named site",
                                       excerpt=ex))
             continue
@@ -91,19 +91,19 @@ def s10_url_construction(ctx: Context) -> SignalResult:
         sub = host[: -len(reg)].rstrip(".") if reg and host.endswith(reg) else ""
         hit = next((b for b in _BRAND_DOMAINS if sub and re.search(rf"(?:^|\.){re.escape(b)}(?:\.|$)", sub)), None)
         if hit and reg not in {registrable(hit)}:
-            r.findings.append(Finding(
+            r.findings.append(Finding.of("link_brand_prefix", 
                 "S10", Group.DEST, ent, 2, Basis.OBSERVED, claim=f"Link looks like {hit}",
                 reality=f"{hit} is only a prefix; the site is really {defang(reg)}", excerpt=ex))
             continue
         if port and port not in {80, 443}:
-            r.findings.append(Finding("S10", Group.DEST, ent, 2, Basis.OBSERVED, claim="A web link",
+            r.findings.append(Finding.of("link_odd_port", "S10", Group.DEST, ent, 2, Basis.OBSERVED, claim="A web link",
                                       reality=f"Uses an unusual port ({port})", excerpt=ex))
             continue
         if reg in SHORTENERS:
             if ctx.is_bulk:
                 r.notes.append("S10 shortener ignored: bulk mail")
                 continue
-            r.findings.append(Finding("S10", Group.DEST, ent, 1, Basis.OBSERVED, claim="A web link",
+            r.findings.append(Finding.of("link_shortener", "S10", Group.DEST, ent, 1, Basis.OBSERVED, claim="A web link",
                                       reality=f"Hidden behind a URL shortener ({reg})", excerpt=ex))
     return r
 

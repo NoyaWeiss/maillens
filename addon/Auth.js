@@ -53,13 +53,3 @@ function onEnableMailboxAccess() {
   ScriptApp.requireScopes(ScriptApp.AuthMode.FULL, OPTIONAL_SCOPES.map(function (s) { return SCOPE_PREFIX + s; }));
   return notify_('Relationship checks enabled. Reopen the email to re-analyze.');
 }
-
-function mailboxAccessSection_(granted) {
-  var section = CardService.newCardSection().setHeader('Relationship checks unavailable');
-  section.addWidget(CardService.newTextParagraph().setText(
-    'MailLens can compare the sender with people you have corresponded with (impersonation, ' +
-    'lookalike domains). This needs read-only mailbox access, which was not granted. MailLens only reads the headers of mail you sent.'));
-  section.addWidget(CardService.newTextButton().setText('Enable relationship checks')
-    .setOnClickAction(CardService.newAction().setFunctionName('onEnableMailboxAccess')));
-  return section;
-}

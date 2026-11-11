@@ -36,7 +36,10 @@ function callAnalyze_(settings, payload, timing) {
 function validateResponse_(b) {
   var ok = b && VERDICTS.indexOf(b.verdict) !== -1 && typeof b.headline === 'string' &&
     typeof b.request_id === 'string' && typeof b.vector === 'string' &&
-    ['findings', 'also_observed', 'suppressed', 'story', 'actions', 'checks', 'out_of_scope', 'assumptions',
-      'pressure_cues'].every(function (k) { return Array.isArray(b[k]); });
+    typeof b.category === 'string' && typeof b.impact === 'string' &&
+    ['findings', 'also_observed', 'suppressed', 'story', 'actions', 'reasons', 'checks', 'out_of_scope', 'assumptions',
+      'pressure_cues'].every(function (k) { return Array.isArray(b[k]); }) &&
+    b.reasons.every(function (x) { return x && typeof x.title === 'string' && typeof x.summary === 'string'; }) &&
+    b.actions.every(function (x) { return x && typeof x.title === 'string' && typeof x.detail === 'string'; });
   if (!ok) throw new Error('Backend response failed validation');
 }

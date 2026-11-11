@@ -28,7 +28,7 @@ def s2_reply_to(ctx: Context) -> SignalResult:
         if rt.reg not in earlier_regs:
             if ctx.is_bulk:
                 r.notes.append("S2 mid-thread change capped at level 1: bulk mail")
-            r.findings.append(Finding(
+            r.findings.append(Finding.of("reply_mid_thread", 
                 "S2", Group.IDENTITY, sender_entity(ctx), 1 if ctx.is_bulk else 2, Basis.OBSERVED,
                 claim=f"A reply in your existing thread with {s.address}",
                 reality=f"Replies now go to {rt.address}; earlier messages from this sender in the thread "
@@ -40,12 +40,12 @@ def s2_reply_to(ctx: Context) -> SignalResult:
     if not is_freemail(s.domain) and is_freemail(rt.domain):
         if ctx.is_bulk:
             r.notes.append("S2 corporate-to-freemail Reply-To capped at level 1: bulk mail")
-        r.findings.append(Finding(
+        r.findings.append(Finding.of("reply_freemail", 
             "S2", Group.IDENTITY, sender_entity(ctx), 1 if ctx.is_bulk else 2, Basis.OBSERVED,
             claim=f"Sent by {s.domain}",
             reality=f"Your reply would go to a personal mailbox: {rt.address}", excerpt=rt.address))
     else:
-        r.findings.append(Finding(
+        r.findings.append(Finding.of("reply_other_domain", 
             "S2", Group.IDENTITY, sender_entity(ctx), 1, Basis.OBSERVED,
             claim=f"Sent by {s.domain}", reality=f"Replies go to a different domain: {rt.domain}",
             excerpt=rt.address))
@@ -76,7 +76,7 @@ def s3_display_name(ctx: Context) -> SignalResult:
     if m := _EMBEDDED_ADDR.search(name):
         emb = registrable(m.group(1))
         if emb != s.reg and emb not in ctx.dkim_regs:
-            r.findings.append(Finding(
+            r.findings.append(Finding.of("display_embedded_address", 
                 "S3", Group.IDENTITY, ent, 2, Basis.OBSERVED,
                 claim=f"Display name shows the address {m.group(0)}",
                 reality=f"The real sender is {s.address}", excerpt=name))
@@ -85,14 +85,14 @@ def s3_display_name(ctx: Context) -> SignalResult:
     lowered = " ".join(name.casefold().split())
     for brand, owned in BRANDS.items():
         if re.search(rf"(?<![a-z0-9]){re.escape(brand)}(?![a-z0-9])", lowered) and s.reg not in owned:
-            r.findings.append(Finding(
+            r.findings.append(Finding.of("display_brand_mismatch", 
                 "S3", Group.IDENTITY, ent, 2, Basis.OBSERVED,
                 claim=f"Display name presents the sender as {brand.title()}",
                 reality=f"The message comes from {s.reg}, which is not a {brand.title()} domain", excerpt=name))
             return r
 
     if _ROLE_ONLY.match(lowered):
-        r.findings.append(Finding(
+        r.findings.append(Finding.of("display_role_only", 
             "S3", Group.IDENTITY, ent, 1, Basis.OBSERVED,
             claim=f"Display name is a role title only (\"{name}\")",
             reality=f"No person or organization is named; the sender is {s.address}", excerpt=name))
@@ -124,7 +124,7 @@ def s4_name_collision(ctx: Context) -> SignalResult:
         level, why = 1, "it is a new address on the same domain as the known contact"
     else:
         level, why = 2, ("it is a free-mail address" if is_freemail(s.domain) else "it is on an unrelated domain")
-    r.findings.append(Finding(
+    r.findings.append(Finding.of("known_name_new_address", 
         "S4", Group.IDENTITY, ent, level, Basis.MAILBOX,
         claim=f"From \"{s.display}\", a person you've corresponded with",
         reality=f"You know {s.display} as {known}; this message comes from {s.address} ({why})",
@@ -147,7 +147,7 @@ def s5_lookalike(ctx: Context) -> SignalResult:
     references += [(d, f"{brand.title()}'s domain") for brand, owned in BRANDS.items() for d in sorted(owned)]
 
     if is_mixed_script(cand):
-        r.findings.append(Finding(
+        r.findings.append(Finding.of("lookalike_mixed_script", 
             "S5", Group.IDENTITY, sender_entity(ctx), 3, Basis.OBSERVED,
             claim=f"Sender domain {s.reg}", reality="The domain mixes alphabets (e.g. Latin and Cyrillic), "
                                                   "a deliberate spoofing construct", excerpt=s.reg))
@@ -170,7 +170,7 @@ def s5_lookalike(ctx: Context) -> SignalResult:
         lvl, ref, why = best
         how = "uses look-alike characters" if lvl == 3 else f"differs by {3 - lvl} character(s)"
         basis = Basis.MAILBOX if ref in known else Basis.OBSERVED
-        r.findings.append(Finding(
+        r.findings.append(Finding.of("lookalike_domain", 
             "S5", Group.IDENTITY, sender_entity(ctx), lvl, basis,
             claim=f"Looks like {ref} ({why})", reality=f"Actually {s.reg}, which {how}", excerpt=s.reg))
     if ctx.req.relationship is None:
@@ -185,7 +185,7 @@ def s7_thread(ctx: Context) -> SignalResult:
     m, s = ctx.req.message, ctx.sender
     ent = sender_entity(ctx)
     if re.match(r"^\s*re\s*:", m.subject or "", re.IGNORECASE) and not (m.in_reply_to or m.references):
-        r.findings.append(Finding(
+        r.findings.append(Finding.of("thread_fake_reply", 
             "S7", Group.DRIFT, ent, 1, Basis.OBSERVED, claim="Subject says it is a reply (\"Re:\")",
             reality="The message is not linked to any earlier message", excerpt=m.subject[:120]))
     thread = ctx.req.thread
@@ -196,13 +196,13 @@ def s7_thread(ctx: Context) -> SignalResult:
         seen.add(Address.parse(t.from_header).address)
         seen.update(a.lower() for a in t.participants)
     if s.address and s.address not in seen:
-        r.findings.append(Finding(
+        r.findings.append(Finding.of("thread_new_sender", 
             "S7", Group.DRIFT, ent, 1, Basis.OBSERVED, claim="A message in an existing conversation",
             reality=f"{s.address} has not appeared anywhere earlier in this thread"))
     earlier_dkim = {registrable(d) for t in thread if Address.parse(t.from_header).address == s.address
                     for d in parse_topmost([t.auth_result] if t.auth_result else []).dkim_domains}
     if earlier_dkim and ctx.dkim_regs and not (earlier_dkim & ctx.dkim_regs):
-        r.findings.append(Finding(
+        r.findings.append(Finding.of("thread_signer_changed", 
             "S7", Group.DRIFT, ent, 1, Basis.OBSERVED,
             claim="Same sender as earlier in this thread",
             reality=f"Signed by {', '.join(sorted(ctx.dkim_regs))} now, but by "

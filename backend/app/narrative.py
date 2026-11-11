@@ -36,44 +36,6 @@ CONSEQUENCE = {
     "deception": "The message misrepresents who sent it or where its links lead.",
 }
 
-ACTIONS = {
-    "account_takeover": [
-        "Do not change any payment details or reply to this message.",
-        "Call the vendor on a phone number you already have (not one from this email) to verify.",
-        "Report the message to your security or finance team.",
-    ],
-    "payment_redirection": [
-        "Verify the change by phone using contact details you already have, not ones from this email.",
-        "Do not send any payment to the new account until it is confirmed.",
-    ],
-    "gift_cards": ["Do not buy or send any gift cards.",
-                   "Contact the supposed sender through a channel you already trust."],
-    "code_theft": ["Never share a verification code; legitimate services never ask for one.",
-                   "If you already shared it, change your password and review account sessions."],
-    "remote_access": ["Do not install the tool.", "Contact your IT team through the usual channel."],
-    "impersonation": ["Do not reply. Contact the person through an address or number you already have.",
-                      "Report the message to your security team."],
-    "lookalike": ["Compare the sender's domain carefully with the real one.",
-                  "Do not open attachments or reply; report the message."],
-    "credential_phish": ["Do not click the link or enter your password.",
-                         "To check your account, type the site's address yourself.",
-                         "Report the message as phishing."],
-    "malware": ["Do not open the attachment.", "Report the message to your security team."],
-    "deception": ["Treat the message with caution and verify the sender through another channel."],
-}
-
-SUMMARY = {
-    "account_takeover": "Someone is using your conversation with this vendor to redirect a payment.",
-    "payment_redirection": "This email asks you to send money to new bank details.",
-    "gift_cards": "This email asks you to buy gift cards, a common scam payout.",
-    "code_theft": "This email asks for a verification code that protects your account.",
-    "remote_access": "This email asks you to give someone remote control of your computer.",
-    "impersonation": "Someone is posing as a person or organization you know.",
-    "lookalike": "The sender's domain imitates one you trust.",
-    "credential_phish": "This email tries to get your password through a deceptive link.",
-    "malware": "The attachment could run code or show a fake sign-in page.",
-    "deception": "This email misrepresents who sent it or where it leads.",
-}
 
 _REQUEST_ARCHETYPE = {"bank_change": "payment_redirection", "payroll": "payment_redirection",
                       "gift_cards": "gift_cards", "code_relay": "code_theft", "remote_access": "remote_access"}
@@ -124,27 +86,3 @@ def story(d: Decision, ask: AskResult, arch: str) -> list[str]:
     if arch in CONSEQUENCE:
         lines.append(CONSEQUENCE[arch])
     return lines
-
-
-def actions(d: Decision, ask: AskResult, arch: str) -> list[str]:
-    if d.verdict is Verdict.INCONCLUSIVE:
-        return ["Don't act on the request until you've confirmed the sender another way.",
-                "If you need to sign in somewhere, type the site's address yourself."]
-    if arch == "none":
-        if ask.level >= 2:
-            return ["If you need to act, go to the site directly instead of using the link."]
-        return ["No action needed."]
-    return ACTIONS.get(arch, ACTIONS["deception"])
-
-
-def headline(d: Decision, ask: AskResult, arch: str) -> str:
-    """One sentence that summarizes; the Why rows carry the specifics, so this never repeats them."""
-    asks = ask.pattern.label[0].lower() + ask.pattern.label[1:] if ask.pattern else ""
-    if d.verdict is Verdict.INCONCLUSIVE:
-        what = f"it asks you to {asks}" if ask.pattern and ask.level >= 2 else "it shows an anomaly"
-        return f"We can't verify who sent this, and {what}."
-    if d.verdict is Verdict.LOW:
-        return "Nothing in this email contradicts what it claims."
-    if d.gate == "S-A":
-        return "A known sender with no red flags, but the request is irreversible."
-    return SUMMARY.get(arch, SUMMARY["deception"])
