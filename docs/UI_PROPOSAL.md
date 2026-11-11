@@ -1,136 +1,235 @@
-# Phase 2: CardService redesign proposal
+# Phase 2: card redesign proposal, v2
 
-Status: **approved 2026-11-11, compact variant**, with these owner decisions:
-- At most **2 "Why" rows** (the strongest finding plus the request row when A>=2) and at most **2 actions**.
-- The confidence line moves to Technical evidence. Exception (ours, for honesty): a quiet line stays
-  on the main card when confidence is **Limited**, because hiding it there would overstate certainty.
-- **Attack Story folded in**: the repeated claim/reality sentences are dropped; the consequence sentence
-  becomes the bottom line of the last "Why" row. The full story is in Technical evidence.
+Status: **proposal v2, awaiting owner approval.** v1 (compact variant, commit `3ba2f43`) was
+reviewed in real Gmail and not approved: cluttered, weak hierarchy, red overused, and broken
+English text direction in Hebrew (RTL) Gmail. Phase 2 stays open until the owner visually
+approves the result in Gmail.
 
-## What the platform allows in the Gmail message sidebar (researched)
+## 1. Verified platform constraints
 
-| Capability | Gmail sidebar | Implication |
+From the official CardService and widget documentation (checked 2026-11-11):
+
+| Need | What CardService offers | Consequence for the design |
 |---|---|---|
-| Columns (side by side) | **Not supported** (compose and Calendar dialogs only) | Everything is a vertical stack |
-| Chips, collapse control, overflow menu | Developer preview for add-ons | Not used: preview features are a demo risk |
-| Text styling | `<b>`, `<i>`, `<font color>`, `<br>`; **no font size** | Prominence comes from colour, an icon, position and white space |
-| Material icons (`MaterialIcon`) | Supported; colour not documented | Icon shape conveys meaning; colour comes from text |
-| `DecoratedText` | Icon + top label + text + bottom label + one right-side control | The building block for every row |
-| `FixedFooter` | Supported; primary button must be FILLED, secondary OUTLINED | Persistent "Technical evidence" + "Re-analyze" |
-| `TextButton` styles | FILLED, FILLED_TONAL, OUTLINED, BORDERLESS; background colour settable | Verdict-coloured primary action |
-| `Divider` | Supported | Separates blocks without section headers |
-| Render-time rule (learned in Phase 1) | Empty sections and empty labels make Gmail reject the card | Every layout is rendered through the strict test double for all 13 scenarios |
+| Headings | `CardSection.setHeader()` (one fixed style) | Every block gets a short section heading; this is our only "heading" typography |
+| Emphasis | `<b>`, `<i>`, `<u>`, `<s>`, `<font color>`, `<br>` in text; **labels are plain text only** | Three text levels: **bold title**, regular explanation, small grey label (metadata) |
+| Font size, fonts, CSS | none | Hierarchy comes from heading, bold, grey labels and spacing |
+| Alignment / direction | **none** (no `dir`, no alignment for text widgets) | Direction can only be influenced with Unicode control characters (see section 4) |
+| Side-by-side layout | Columns are not supported in the Gmail message sidebar | Single vertical column |
+| Icons | Material icons (any Google Font icon); colour not settable | Icons mark meaning by shape; never the only signal |
+| Persistent buttons | `FixedFooter` (primary FILLED, secondary OUTLINED) | Technical evidence and Re-analyze are always visible |
+| Card header | optional | **Removed**: Gmail already shows "MailLens" above the card (fixes the duplicate branding) |
+| Render-time rules (learned) | Empty sections or labels make Gmail reject the card | Enforced by the strict card test for every state |
 
-## Design principles
+## 2. Main card structure (always the same order)
 
-1. **The verdict should be readable within one second**: colour, icon, verdict word, score, and one sentence.
-2. **No repetition.** The current card says the same thing three times (headline, Claim vs. Reality,
-   Attack Story). Each fact appears once.
-3. **At most three reasons** on the main card, ordered by strength; the rest are in Technical evidence.
-4. **Low-risk emails stay quiet**: a short card, no alarm vocabulary.
-5. **Technical evidence is a separate card** (pushed), reached from a fixed footer button.
+1. **Risk assessment:** verdict word + score, attack category (hedged), one-sentence summary.
+2. **Why was this flagged?** At most two findings: **bold label**, one-sentence explanation, grey evidence-type tag.
+3. **Potential impact:** one sentence on what happens if the user complies (High/Suspicious/Inconclusive only).
+4. **Recommended action:** one or two actions, each a **bold action** plus one sentence.
+5. Fixed footer: **Technical evidence** · **Re-analyze**.
 
-## Main card: High risk (example: T5)
+No raw email addresses, URLs or header text on the main card; those live in Technical evidence.
 
-```
-┌──────────────────────────────────────────┐
-│ 🛡  MailLens                              │  header (neutral; brand only)
-├──────────────────────────────────────────┤
-│ ⛔ HIGH RISK                     75 / 100 │  icon + red bold verdict + score
-│    ▰▰▰▰▰▰▰▰▱▱                             │  red score bar (10 segments)
-│    Vendor account takeover                │  archetype (bottom label)
-│                                           │
-│ Replies now go to a Gmail address, and    │  one-sentence explanation
-│ the email asks you to change bank details.│
-│ ───────────────────────────────────────── │
-│ WHY                                       │  section header
-│ ✉  Claims  A reply in your thread with    │  ≤3 Claim vs. Reality rows
-│           billing@acmesupply.example      │  (icon by evidence type)
-│    Reality Replies go to                  │
-│           acme.supply.accounts@gmail…     │
-│ 💳 Asks   Change of bank details          │  request row (irreversible)
-│           Irreversible if fraudulent      │
-│ ───────────────────────────────────────── │
-│ WHAT TO DO                                │
-│ 1. Don't change payment details or reply. │  2–3 actions, verdict-specific
-│ 2. Call the vendor on a number you know.  │
-│ 3. Report it to finance or security.      │
-│ ───────────────────────────────────────── │
-│ Full confidence · 10 of 10 checks ran     │  one quiet line
-├──────────────────────────────────────────┤
-│ [ Technical evidence ]  [ Re-analyze ]    │  fixed footer (filled / outlined)
-└──────────────────────────────────────────┘
-```
-
-## Main card: Low risk (example: T2)
+### High risk (T5)
 
 ```
-┌──────────────────────────────────────────┐
-│ 🛡  MailLens                              │
-├──────────────────────────────────────────┤
-│ ✅ LOW RISK                        8 / 100 │  green
-│    ▰▱▱▱▱▱▱▱▱▱                             │
-│                                           │
-│ Nothing in this email contradicts what    │
-│ it claims.                                │
-│ ───────────────────────────────────────── │
-│ ℹ  It asks you to sign in. If you need to,│  advisory only when A≥2
-│    go to the site directly.               │
-│ ───────────────────────────────────────── │
-│ Full confidence · 12 of 12 checks ran     │
-├──────────────────────────────────────────┤
-│ [ Technical evidence ]  [ Re-analyze ]    │
-└──────────────────────────────────────────┘
+ ┌ Gmail sidebar ─────── MailLens ─┐   ← Gmail's own title; no second "MailLens"
+ │ Risk assessment                 │   section heading
+ │ ⛔ High risk · 75/100           │   bold; only the words "High risk" in red
+ │    ▰▰▰▰▰▰▰▰▱▱                   │   red bar
+ │    Likely vendor account takeover│   grey label, hedged ("Likely")
+ │ Someone may be using your        │   neutral text, one sentence
+ │ conversation with this vendor to │
+ │ redirect a payment.              │
+ │                                  │
+ │ Why was this flagged?            │
+ │ ↩  Unusual reply address         │   bold label
+ │    Replies would go to a         │   neutral explanation
+ │    different address than earlier│
+ │    messages from this vendor.    │
+ │    Observed in this email        │   grey tag (evidence type)
+ │ 🏦 Bank-detail change request    │
+ │    The email asks you to send    │
+ │    payment to a new account.     │
+ │    Detected from the wording     │   grey tag (heuristic)
+ │                                  │
+ │ Potential impact                 │
+ │ If this is fraud, a payment would│
+ │ go to the attacker and is usually│
+ │ unrecoverable.                   │
+ │                                  │
+ │ Recommended action               │
+ │ ✓  Verify with the vendor        │   bold action
+ │    Call a number you already     │
+ │    trust before changing payment │
+ │    details.                      │
+ │ ✓  Don't reply to this email     │
+ │    Report it to your finance or  │
+ │    security team.                │
+ ├──────────────────────────────────┤
+ │ [Technical evidence] [Re-analyze]│   fixed footer, neutral brand colour
+ └──────────────────────────────────┘
 ```
 
-## Main card: Inconclusive (T9) and Suspicious (T6)
-
-- **Inconclusive:** grey "?" icon, "INCONCLUSIVE", **no score bar** (a score would imply false
-  precision), and the explanation "We can't verify who sent this, and it asks you to sign in."
-  Then 2 actions, then the confidence line: "Limited confidence · sender authentication unavailable".
-- **Suspicious:** amber "⚠" icon, the same structure as High. For T6 the "Why" block is the single request row
-  ("Asks: change of bank details") and the explanation "No red flags, but this request is
-  irreversible. Verify it by phone."
-
-## Error card (backend down, Gmail stall, permissions)
+### Suspicious (T6)
 
 ```
-│ ⚠  NO VERDICT                              │  grey; never green
-│    MailLens couldn't analyze this email.   │
-│    The analysis service is unreachable.    │  plain reason, no stack text
-│ [ Try again ]                              │  FILLED (Phase 1 mitigation)
-│ Details: failed at "call backend"          │  small bottom label
+ Risk assessment
+ ⚠  Suspicious · 40/100                 amber; bar ▰▰▰▰▱▱▱▱▱▱
+    Possible payment redirection
+ A known sender asks for an irreversible change. Nothing else looks wrong.
+
+ Why was this flagged?
+ 🏦 Bank-detail change request
+    The email asks you to send future payments to a new bank account.
+    Detected from the wording · sender is known to you
+
+ Potential impact
+ If the request is fraudulent, payments would go to the attacker.
+
+ Recommended action
+ ✓  Verify by phone
+    Use contact details you already have, not ones in this email.
+ ✓  Hold payments
+    Don't pay the new account until the change is confirmed.
 ```
 
-## Relationship permission prompt (when gmail.readonly isn't granted)
+### Low risk (T2: asks you to sign in)
 
-The current full section becomes one row:
-`👥 Relationship checks are off. MailLens can compare senders with people you've emailed.  [Enable]`
-(DecoratedText with the button on the right.)
+```
+ Risk assessment
+ ✓  Low risk · 8/100                    green; bar ▰▱▱▱▱▱▱▱▱▱
+    12 checks ran
+ No signs of deception were found.
 
-## Technical evidence card (pushed)
+ Recommended action                     (only when the email asks for something)
+ ↗  Sign in directly
+    If you need to act, open the site yourself instead of using the link.
+```
+A Low email that asks for nothing (T1, T3) shows only the Risk assessment block.
 
-1. **Decision:** the gate in plain words, then the vector with an inline legend.
-2. **All findings:** every finding with signal, level, basis, entity and defanged excerpt.
-3. **Also observed** (deduplicated) and **Guards applied**, each collapsible, showing one row when collapsed.
-4. **Checks:** ran / unavailable / not applicable, as three lines with counts.
-5. **Limits:** out-of-scope list and assumptions, collapsed.
-6. **Developer tools**: the probe button, shown only in dev mode, hidden in production.
+### Inconclusive (T9)
 
-## What changes vs. today
+```
+ Risk assessment
+ ?  Inconclusive · no score             grey; no bar (a score would be false precision)
+    Sender could not be verified
+ We can't confirm who sent this, and it asks you to sign in.
 
-| Today | Proposed |
-|---|---|
-| Headline, Claim vs. Reality and Attack Story repeat each other | Explanation once; ≤3 reasons; the story's useful part (the consequence) becomes the request row's bottom line |
-| Score is plain text | Score with a coloured 10-segment bar; none for Inconclusive |
-| "Technical evidence" is a button in the body | Fixed footer, always visible |
-| Error card exposes raw error text | Plain reason + "Try again"; raw step only in small print |
-| Relationship prompt is a full section | One row with an "Enable" button |
-| Probe button visible to every user | Developer mode only |
+ Why was this flagged?
+ 🔒 Sender can't be verified
+    No authentication results were available, which is common for forwarded mail.
+    Limited confidence
+ 🔑 Sign-in request
+    The email asks you to sign in through a link.
+    Detected from the wording
 
-## Verification plan for the redesign
+ Potential impact
+ If this is phishing, a password entered on the linked page could be stolen.
 
-1. Every card for all 13 scenario responses and the error variants renders through the strict
-   test double (extended for FixedFooter and icon rules).
-2. Live check in Gmail on T1–T9, judged visually by the owner.
-3. No changes to backend detection; the backend response gains no new fields (the layout uses existing ones).
+ Recommended action
+ ✓  Confirm another way
+    Check with the sender through a channel you already trust.
+```
+
+### Error
+
+```
+ Analysis unavailable
+ ⚠  No verdict
+    MailLens couldn't analyze this email.
+ The analysis service is unreachable.
+ [ Try again ]
+ Step: call backend                     grey; dev builds add the raw error
+```
+
+## 3. Technical evidence (separate, pushed card)
+
+```
+ Technical evidence                     header title; subtitle "Request 1a2b3c"
+ Decision
+ High via H-B: a strong finding (S2) plus an irreversible request (S13).
+ Vector D2 · A3 · E1 · P0 · N0          (legend in grey below)
+ Confidence: full · 10 of 10 checks ran
+
+ Evidence (2)
+ S2 Reply-To divergence · strong · observed
+   Claim: a reply in your thread with billing@acmesupply.example
+   Reality: replies go to acme.supply.accounts@gmail.example
+ S13 Request · irreversible · heuristic
+   "…kindly wire the INV-2207 payment to our new account…"
+
+ Attack story              (collapsed, first line visible)
+ Checks                    (collapsed) Ran 10 · Unavailable 0 · Not applicable 3
+ False-positive guards     (collapsed)
+ Limits and assumptions    (collapsed)
+ Developer                 (dev builds only: probe, direction test)
+```
+Exact addresses, excerpts and headers appear only here, each wrapped in the chosen
+direction-safe form (section 4).
+
+## 4. RTL/LTR approach
+
+**What the platform allows:** nothing structural. Text widgets have no `dir` and no alignment,
+and labels are plain text. In Hebrew Gmail the card is laid out right to left and every text
+block gets an RTL base direction. English punctuation and leading numbers are then reordered by
+the Unicode bidi algorithm, which is exactly the "period on the wrong side, `1.` on the wrong side" problem.
+
+**The only tool available:** Unicode direction control characters inside the text. Candidates,
+being tested now on a developer card in real Hebrew Gmail:
+
+| Variant | Characters | Expected effect if Gmail keeps them |
+|---|---|---|
+| A | none | today's broken ordering (baseline) |
+| B | LRM (U+200E) at start and end | trailing punctuation stays with the English text |
+| C | LRI … PDI (U+2066 … U+2069), an isolate | whole string ordered left to right, isolated from surroundings (the modern recommendation) |
+| D | LRE … PDF (U+202A … U+202C), an embedding | like C, older mechanism |
+
+Alignment will remain right-aligned in Hebrew Gmail whatever we do; only the *order* inside each
+line can be fixed. So the design also stays direction-safe on its own, as a second layer:
+- Main-card titles are short noun phrases **without trailing punctuation**; explanations are single sentences.
+- **No numbered lists:** each action has an icon and a bold title instead of "1." / "2.".
+- **No raw addresses or URLs on the main card.** In Technical evidence each is isolated individually.
+- The score is "75/100" inside the same isolated run as the verdict word, so it can't drift.
+
+The winning variant is applied in one helper used for every string, so the choice is
+centralized and testable (a unit test asserts every rendered string is wrapped).
+
+## 5. Colour and evidence-type system
+
+| Element | Colour | Also conveyed by (not colour alone) |
+|---|---|---|
+| Verdict word + score bar | High red `#d93025`, Suspicious amber `#b06000`, Low green `#188038`, Inconclusive grey `#5f6368` | word, icon shape (⛔ ⚠ ✓ ?), bar length |
+| Finding labels, explanations, impact, actions | default text colour (neutral) | — |
+| Evidence-type tags, metadata | grey labels | wording |
+| Footer primary button | one neutral brand colour (not verdict red) | — |
+
+Evidence type is stated in words on every finding, so inference is never shown as fact:
+"Observed in this email" (observed), "From your email history" (mailbox inference),
+"Detected from the wording" (heuristic). Attack categories are hedged: "Likely …" for High,
+"Possible …" for Suspicious, none for Low or Inconclusive.
+
+## 6. Content changes needed (presentation only)
+
+The main card needs address-free finding titles and explanations, an impact sentence and
+titled actions. Two ways to provide them:
+
+- **Option 1 (recommended): presentation fields from the backend.** Each finding gains `title` and
+  `summary`; the response gains `impact` and `actions: [{title, detail}]`, all produced by the
+  existing template layer (`narrative.py`). Detection, scoring, gates, permissions and privacy are
+  untouched, and a regression test asserts that every scenario's verdict, score, gate and vector
+  are identical before and after. Text stays testable in Python next to the logic it describes.
+- **Option 2: an add-on-side mapping** from signal ID to title and text. No backend change, but the
+  wording drifts from the detection logic and the explanations can't be specific (for example,
+  "earlier messages from this vendor" vs. "a personal mailbox").
+
+## 7. Verification plan
+
+1. Owner checks the direction test card in Hebrew Gmail; we pick the variant from that evidence.
+2. Implement; the strict card test covers every state (13 real responses + error variants), and new
+   tests assert there are no raw addresses on the main card, wrapped strings, no numbered lists, and
+   unchanged verdicts.
+3. Push; owner reviews High (T5, T7, T8), Suspicious (T6), Low (T1, T2, T3), Inconclusive (T9) and
+   an error state in Hebrew Gmail on the narrow side panel.
+4. Phase 2 closes only on the owner's visual approval.

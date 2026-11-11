@@ -193,7 +193,11 @@ function buildTechnicalCard_(r, messageId) {
       '<br><br><b>Assumptions:</b><br>' + r.assumptions.map(escapeHtml_).join('<br>')
   ]));
 
-  if (isDevBuild_()) card.addSection(CardService.newCardSection().setHeader('Developer').addWidget(probeButton_(messageId)));
+  if (isDevBuild_()) {
+    card.addSection(CardService.newCardSection().setHeader('Developer').addWidget(probeButton_(messageId))
+      .addWidget(CardService.newTextButton().setText('Text direction test (dev)')
+        .setOnClickAction(CardService.newAction().setFunctionName('onBidiTest'))));
+  }
   return card.build();
 }
 
