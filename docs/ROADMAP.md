@@ -6,8 +6,8 @@ over optional additions. Each phase ends with a verified status report.
 | Phase | Scope | Status |
 |---|---|---|
 | 1. Reliability & performance | Measured latency, stall analysis, budgets, fallbacks, risks | Implemented and verified in Gmail; documented in [RELIABILITY.md](RELIABILITY.md) |
-| 2. UI/UX refinement | CardService redesign: prominent verdict + score, concise reason, 2–3 findings, Claim vs. Reality, actions, Technical Evidence separate | **Next.** Layout proposal awaiting owner approval before implementation |
-| 3. Quality & security verification | Gmail scenario re-verification, false-positive checks, tests, OAuth and secret-handling review, limitations | Not started (partially covered by existing tests) |
+| 2. UI/UX refinement | CardService redesign: prominent verdict + score, concise reason, 2–3 findings, Claim vs. Reality, actions, Technical Evidence separate | Main card **approved in Gmail**. Welcome screen built (awaiting visual approval). Detailed analysis content proposal awaiting approval |
+| 3. Quality & security verification | Gmail scenario re-verification, false-positive checks, tests, OAuth and secret-handling review, limitations | **Done**, see [SECURITY_QA_REPORT.md](SECURITY_QA_REPORT.md); open items need owner decisions |
 | 4. Interactive security dashboard | Standalone React dashboard, aggregate threat activity, 1H/24H/7D/30D selector, privacy-conscious storage | **Plan only, do not build yet** |
 | 5. Detection performance evaluation | Independent synthetic dataset (300–500 cases), precision/recall/F1/FPR, confusion matrix, per-attack-type results, labelled synthetic | **Plan only, do not build yet** |
 | 6. Final submission | README, architecture, threat model, stable hosting, GitHub repo, interview demo | Drafts allowed now; kept current as the product evolves |

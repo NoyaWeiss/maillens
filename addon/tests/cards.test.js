@@ -227,3 +227,21 @@ test('production error card shows no step or raw error', () => {
   load(CardService, false).buildErrorCard_(new Error('Exception: internal'), 'm', 'call backend', []);
   assert.ok(!/Step:|internal/.test(mainText(built[0])));
 });
+
+test('hostile strings in every backend field are escaped before rendering', () => {
+  const evil = '<img src=x onerror=alert(1)><a href="javascript:alert(2)">x</a><script>alert(3)</script>';
+  const KEEP = new Set(['verdict', 'basis', 'state', 'group', 'request_id', 'level', 'score']);
+  const deep = (v, k) => KEEP.has(k) ? v : typeof v === 'string' ? evil + v : Array.isArray(v) ? v.map((x) => deep(x))
+    : v && typeof v === 'object' ? Object.fromEntries(Object.entries(v).map(([kk, x]) => [kk, deep(x, kk)])) : v;
+  for (const [name, r] of Object.entries(responses)) {
+    const { CardService, strings } = strictCardService();
+    const ctx = load(CardService, false);
+    const hostile = deep(r);
+    ctx.buildResultCard_(hostile, 'm', ['gmail.readonly']);
+    ctx.buildTechnicalCard_(hostile, 'm');
+    for (const s of strings) {
+      const withoutOurTags = String(s).replace(/<\/?b>|<br>|<\/font>|<font color="#[0-9a-f]{6}">/gi, '');
+      assert.ok(!withoutOurTags.includes('<'), `${name}: unescaped markup reached a widget: ${withoutOurTags.slice(0, 120)}`);
+    }
+  }
+});

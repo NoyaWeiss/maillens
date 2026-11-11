@@ -40,6 +40,15 @@ function ltrLines_(lines) {
 
 var TOKEN_RE = /(hxxps?:\/\/[^\s<]+|[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+|[A-Za-z0-9-]+(?:\.|\[\.\])[A-Za-z0-9-]+(?:(?:\.|\[\.\])[A-Za-z0-9-]+)*)/g;
 
+/**
+ * Labels (top/bottom labels, titles, hints, button text) are documented as plain text, so HTML-escaping
+ * would show entities literally. Instead, data placed in a label has angle brackets removed: markup can
+ * never be interpreted, whatever Gmail's renderer does.
+ */
+function plain_(s) {
+  return String(s == null ? '' : s).replace(/[<>]/g, '');
+}
+
 /** Escapes, then gives each address, domain or defanged URL its own isolate (technical lines). */
 function escapeTokens_(s) {
   return escapeHtml_(s).replace(TOKEN_RE, function (t) { return LRI + t + PDI; });
@@ -97,7 +106,7 @@ function row_(icon, title, text, tag) {
   var w = CardService.newDecoratedText()
     .setText(ltrLines_(['<b>' + escapeHtml_(title) + '</b>', escapeHtml_(text)]))
     .setWrapText(true);
-  if (tag) w.setBottomLabel(ltr_(tag));
+  if (tag) w.setBottomLabel(ltr_(plain_(tag)));
   return withIcon_(w, icon, title);
 }
 
@@ -108,7 +117,7 @@ function assessmentWidget_(r, style) {
     ? 'Risk index ' + Number(r.score) + '/100  <font color="' + style.color + '">' + scoreBar_(Number(r.score)) + '</font>'
     : 'Risk index not available';
   var w = CardService.newDecoratedText().setText(ltrLines_([verdictLine, indexLine])).setWrapText(true);
-  if (r.category) w.setBottomLabel(ltr_(r.category));
+  if (r.category) w.setBottomLabel(ltr_(plain_(r.category)));
   return withIcon_(w, style.icon, style.label);
 }
 
@@ -235,7 +244,7 @@ function buildTechnicalCard_(r) {
 
 /** Small grey key above an isolated value (addresses and domains get their own isolate). */
 function detailRow_(label, value) {
-  return CardService.newDecoratedText().setTopLabel(ltr_(label))
+  return CardService.newDecoratedText().setTopLabel(ltr_(plain_(label)))
     .setText('<font color="' + GREY + '">' + ltr_(escapeTokens_(value)) + '</font>').setWrapText(true);
 }
 
@@ -299,7 +308,7 @@ function withIcon_(decoratedText, name, fallbackLabel) {
   try {
     decoratedText.setStartIcon(CardService.newIconImage().setMaterialIcon(CardService.newMaterialIcon().setName(name)));
   } catch (e) {
-    decoratedText.setTopLabel(ltr_(fallbackLabel || 'MailLens'));
+    decoratedText.setTopLabel(ltr_(plain_(fallbackLabel || 'MailLens')));
   }
   return decoratedText;
 }

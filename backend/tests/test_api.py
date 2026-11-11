@@ -83,3 +83,14 @@ def test_rate_limiter_memory_is_bounded():
 
 def test_dev_probe_endpoint_absent_unless_enabled(client, headers):
     assert client.post("/v1/dev/probe-report", json=[], headers=headers).status_code == 404
+
+
+def test_logs_never_contain_email_content(client, headers, caplog):
+    import logging
+    caplog.set_level(logging.DEBUG)
+    secret = "ZQX-UNIQUE-MARKER-71"
+    payload = {"message": {"from_header": f"{secret} <{secret.lower()}@leak.example>", "subject": secret,
+                           "html_body": f"<p>wire the payment to our new account {secret}</p>",
+                           "reply_to": f"x@{secret.lower()}.example"}}
+    assert client.post("/v1/analyze", json=payload, headers=headers).status_code == 200
+    assert secret.lower() not in caplog.text.lower()

@@ -1,0 +1,228 @@
+# MailLens: Phase 3 Security & QA Report
+
+Date: 2026-11-11 · Scope: add-on (Apps Script), backend (FastAPI), configuration, data flow, demo mailbox.
+Builds tested: add-on **production build** (no developer tools) pushed at 15:56; backend at commit `a1b5c03`+.
+
+## 1. Executive summary
+
+MailLens passed the Phase 3 review with **no open critical or high-severity issues**. The review
+found and fixed **7 defects** (F-01 to F-07), two of them Medium:
+- request quotes showed live, potentially clickable phishing URLs
+- quotes glued the Subject onto the Body and cut words in half, misrepresenting the evidence
+
+**Detection behaves as specified:**
+- All 10 demo scenarios produce the expected verdict **in real Gmail**.
+- In a new 28-case edge suite, 16 of 17 hard negatives stay Low and all 9 attacks reach their expected level.
+- The one false positive (a newsletter *describing* a bank-detail scam is rated Suspicious) is documented
+  and awaits an owner decision.
+
+**Before the demo, these residual items remain:**
+- switch the backend to production mode
+- choose stable hosting (this also unblocks the outbound URL allow-list)
+- accept that an occasional Gmail API stall, observed once at 32.5 s, can still exceed Gmail's 30 s limit
+
+| Severity | Found | Fixed | Open |
+|---|---|---|---|
+| Critical | 0 | 0 | 0 |
+| High | 0 | 0 | 0 |
+| Medium | 5 | 2 | 3 (residual or pending a decision) |
+| Low | 8 | 5 | 3 (F-10 accepted, F-13 residual, F-16 pending a decision) |
+| Informational | 4 | – | accepted, documented |
+
+## 2. Methodology and scope
+
+| Method | What it covers | Evidence type |
+|---|---|---|
+| Code review | Every place untrusted data enters a widget or the backend; OAuth scopes; outbound fetches; logging; dev-only paths | Manual |
+| Backend automated tests (pytest) | Signals, decision invariants, scenarios, presentation, grounding, adversarial input, API security | **Automated, mocked input** |
+| Add-on automated tests (node) | Card rendering through a strict CardService double, escaping, Variant C isolation, failure paths, payload limits | **Automated, mocked Gmail** |
+| Contract test | The real add-on payload builder (mocked Gmail) posted to the **live** backend, on both permission paths | **Replayed integration** |
+| Public-endpoint checks | `curl` against the Cloudflare tunnel | **Real network** |
+| Real Gmail | Analyses, probes and status checks from Google's servers, evidenced by backend logs and owner screenshots | **Real Gmail** |
+
+Real-Gmail claims below are made **only** where the backend log shows a request from Google's
+address ranges, the owner observed the card, or the developer probe reported it.
+
+## 3. Security findings
+
+| ID | Severity | Finding | Status |
+|---|---|---|---|
+| F-01 | Medium | Request quotes contained **live URLs and host names** (e.g. `https://evil.example/login`); Gmail may render URLs in card text as links, so the tool could hand the user the phishing link | **Fixed:** all quoted text is defanged (`hxxps://evil[.]example`); test `test_nothing_rendered_is_a_live_link` |
+| F-02 | Medium | Quotes were cut from "subject + body" with a fixed 40-char window: subject glued onto body, words cut ("INV-22", "Please si"), and matches in the subject quoted as body text | **Fixed:** quote = whole sentence(s) from **one** source, labelled Subject/Body, word-boundary truncation, body preferred; test `test_quote_is_verbatim_from_one_source` |
+| F-03 | Low | Evidence labelled "Sender" when it concerned the Reply-To; ambiguous for an analyst | **Fixed:** labels are From / Reply-To / Display name / Earlier messages from this From address |
+| F-04 | Low | OAuth scope `userinfo.email` declared but never used | **Fixed:** removed; live manifest now has 5 scopes |
+| F-05 | Low | Dev-only handlers (probe, direction test, render tests) had no build guard | **Fixed:** each returns "not available" outside dev builds |
+| F-06 | Low | Rate limiter kept one entry per client address forever (memory growth) | **Fixed:** bounded at 10,000 clients with idle and least-recent eviction; test added |
+| F-07 | Low | Data placed in **plain-text labels** (category, evidence tags, detail labels) was not sanitized, relying on undocumented renderer behaviour | **Fixed:** angle brackets stripped from label data; test renders every response with hostile strings in **every** field and asserts no markup survives |
+| F-08 | Medium | Backend currently runs in **dev mode**: the probe-report endpoint is enabled (API key still required) and logs carry demo labels and client timings | **Open, action before demo:** `MAILLENS_ENV=prod scripts/dev.sh` (implemented and tested) |
+| F-09 | Medium | Manifest has no `urlFetchWhitelist`, so the add-on could fetch any HTTPS URL entered in settings | **Open:** needs the stable backend hostname (hosting decision) |
+| F-10 | Low | API key is in the generated, gitignored `Secrets.js`, pushed to the **private** Apps Script project; anyone with edit access to that project can read it | **Accepted for the prototype.** Production: per-user property only, or a per-deployment secret |
+| F-11 | Info | Only the topmost `Authentication-Results` from `mx.google.com` is trusted. That's correct for Gmail-delivered mail, but inserted or imported mail (our demo mailbox) can carry a sender-written header in that position | **Documented:** demo mailbox headers are simulated (README disclosure) |
+| F-12 | Medium | A Gmail API call in a **required** step was once measured at **32,481 ms**; Apps Script can't time-bound it, and Gmail stops at ~30 s ("Unable to load content") | **Residual risk:** "Try again" on the error card; warm-up before the demo; see RELIABILITY.md |
+| F-13 | Low | `UrlFetchApp` has no configurable timeout, so a hung backend would hit Gmail's 30 s limit | **Residual:** backend is stateless and responds in ms |
+| F-14 | Info | The per-user Google cache holds the last analysis result (10 min) and the message token (5 min) | **Accepted:** user-scoped; needed for "View detailed analysis" and "Re-analyze" |
+| F-15 | Info | Rate limiting is keyed by source IP; all add-on traffic arrives from Google egress addresses | **Accepted for the prototype** |
+| F-16 | Low | Detection false positive: a newsletter *describing* a scam ("…claiming their bank details have changed and asking them to wire payments to a new account") → Suspicious (A=3) | **Open, owner decision:** add a narrow "reported speech" guard (e.g. "scammers/attackers … ask/claim") vs. keep the spec's rule that bulk never suppresses A=3 |
+| F-17 | Info | Git commits carry the author's personal email, which becomes public on publish | **Owner decision before publishing:** switch to a GitHub noreply address |
+
+### Verified controls (PASS)
+
+| Control | Evidence |
+|---|---|
+| API key required on `/v1/analyze` and `/v1/status`; constant-time comparison | 401 without key, both locally and **over the public tunnel** |
+| Rate limit checked before authentication (key guessing is throttled) | `test_rate_limit_rejects_after_quota_and_runs_before_auth` |
+| Request-size cap | **413 for a 2 MB body over the public tunnel**; field and list limits return 422 |
+| No API docs or schema exposed | `/docs` and `/openapi.json` return 404 **over the tunnel** |
+| No stack traces or echoed input in errors | malformed JSON and types tests; validation errors list field paths only |
+| No outbound network calls from the backend | every test runs with sockets blocked; the public suffix list is bundled |
+| Algorithmic-complexity resistance | hostile HTML, style, header and anchor inputs each under 2 s (test suite); a 19 s nested-HTML case was found and fixed in Phase 1 |
+| Prompt-injection resistance | no LLM; hidden "this email is safe / ignore instructions" text *raises* the verdict (level-3 finding); visible injection text never lowers it (`test_injected_instructions_never_lower_the_verdict`) |
+| HTML/script injection into cards | every value HTML-escaped (text) or bracket-stripped (labels); hostile-field rendering test |
+| Log privacy | backend logs only request ID, verdict, gate, vector and signal IDs; `test_logs_never_contain_email_content` |
+| Secrets not in git | `.env`, `Secrets.js`, `.clasp.json` gitignored; staged-diff scan finds no key value before every commit |
+| Least-privilege OAuth | 5 scopes; `gmail.readonly` optional with graceful fallback; `gmail.metadata` rejected on **probe evidence** (it blocks reading the open email's body) |
+| Developer tools absent from the demo build | production build verified live: `"dev": false`, guarded handlers, no dev UI |
+
+## 4. Bugs found and fixed during Phase 3
+
+Covers F-01 to F-07 above. All fixes are covered by new regression tests. The decision snapshot test
+(`test_golden.py`) still passes, so **no verdict, risk index, gate or vector changed**.
+
+## 5. Detection correctness
+
+| Check | Result |
+|---|---|
+| Spec 4.1 per-signal must-fire / must-not-fire table | PASS (automated) |
+| Engine invariants INV-1..6 (exhaustive grid) | PASS (automated) |
+| Spec 3.6 worked outcomes on the 13 demo emails | PASS (automated) **and** observed in real Gmail (table in section 7) |
+| Weak signals alone never reach High | PASS (INV-1 plus edge-suite assertion) |
+| Correlated findings not double-counted (one entity, one count) | PASS (R1/R3 tests; T7 shows one sender entity) |
+| Relationship-aware cases: known contact, new address on the same domain, ambiguous name, freemail impersonation | PASS (signal tests + edge suite + live T4 backup) |
+| High-impact request without links (T6, gift cards, CEO wire) | PASS: Suspicious from a known sender; High with corroboration (H-C) |
+| Inconclusive only under its single rule | PASS (INV-6; T9 live) |
+| Unavailable vs. not applicable distinguished | PASS (check states with plain reasons) |
+
+### Edge-case suite (28 cases, written before the first run)
+
+| Group | Cases | Matched expectation | Notes |
+|---|---|---|---|
+| Hard negatives | 17 | 16 | Contractor on personal Gmail, password reset, code delivery, calendar, mailing list, help-desk Reply-To, known vendor PDF invoice, same-domain new address, bulk shortener, DocuSign "via", IT portal, forwarded without auth, PayPal receipt, ESP-tracked link, payslip, "Re:" without references stay **Low**. **1 false positive: F-16** |
+| Attacks | 9 | 9 | Gift cards (H-C), CEO wire (H-C), IP-literal link, `user@host` trick, double extension, DMARC reject fail, corporate→freemail Reply-To, MFA-code relay, `rn`→`m` look-alike all reach their expected level |
+| Known blind spots | 2 | 2 (stay Low, as documented) | Plain-text phish from attacker infrastructure with clean authentication; QR-code image phish |
+
+**False negatives (by design, documented):**
+- A first-contact, plain-text credential request with valid authentication and no deceptive
+  construct is Low with advice.
+- Text in images is not read.
+- No threat-intelligence or URL reputation lookups.
+
+These figures are a sanity check on self-authored cases, **not** a detection-accuracy benchmark
+(that's Phase 5).
+
+## 6. Explanation and evidence integrity
+
+| Requirement | Status | Test |
+|---|---|---|
+| Observed facts separate from inference (no "fraud/attacker/compromise…" in observed statements) | PASS | `test_observed_statements_contain_no_inference` |
+| From and Reply-To never confused | PASS | `test_reply_to_evidence_matches_headers`, label assertions |
+| Quotes verbatim from one source, never Subject+Body | PASS (fixed F-02) | `test_quote_is_verbatim_from_one_source` |
+| Attack categories hedged unless an observed fact | PASS | `test_main_card_rules` |
+| Risk index never presented as a probability | PASS | `test_risk_index_is_never_a_probability` |
+| Coverage not presented as confidence | PASS | Detailed analysis states "completed checks show what was examined, not how certain the verdict is" |
+| Presentation can't change a decision | PASS | `test_golden.py` decision snapshot |
+| Exact evidence available for audit | PASS | Detailed analysis → Evidence (collapsed) |
+| Detailed analysis content redesign (case-specific explanation, "what it may mean / doesn't establish") | **NOT DONE**: proposal awaiting owner approval (Phase 2 item) | – |
+
+## 7. Real Gmail integration results
+
+Source: backend logs (requests from Google address ranges, scenario labels in dev mode) and owner observations.
+
+| Scenario | Expected | Observed in Gmail |
+|---|---|---|
+| T1 billing-platform invoice | Low | Low (4 runs) |
+| T2 sign-in alert | Low | Low (2) |
+| T3 newsletter | Low | Low (2) |
+| T4 backup name collision | High · H-B | High · H-B (2) |
+| T5 Reply-To changed mid-thread | High · H-B | High · H-B (19) |
+| T6 bank change, known vendor | Suspicious · S-A | Suspicious · S-A (1) |
+| T7 look-alike domain | High · H-A | High · H-A (2) |
+| T8 hidden scanner text | High · H-A | High · H-A (2) |
+| T9 forwarded, no authentication | Inconclusive | Inconclusive (4) |
+| H2 history reply | Low | Low (1) |
+
+- **Analyses from Google:** 56. **Welcome-screen status checks from Google:** 5, all 200.
+- **Latency** (38 timed runs, Apps Script time before the backend call): median **298 ms**, p90 **564 ms**,
+  max **1,635 ms**. One relationship cache miss: **1,082 ms**. Full path including the backend
+  (probe G8, 5 runs): **592–844 ms**.
+- **Feasibility probe (real Gmail):** G1 headers, G1b body, G2 sent-mail headers, G3 thread headers,
+  G6 rendering, G7 reachability and G8 full path all PASS under the final permissions.
+- **Earlier incidents seen in Gmail and fixed:**
+  - empty card section → "Unable to load content" (T1)
+  - `gmail.metadata` blocking body reads
+  - an invalid `script.locale` setting
+  - a duplicate function shadowing a card section
+
+### NOT VERIFIED in real Gmail (covered by automated tests only)
+
+| Behaviour | Automated coverage |
+|---|---|
+| Backend unreachable / 5xx / 401 / 429 error card | `errors.test.js`, strict card tests |
+| Re-analyze after the 5-minute message token expires | `errors.test.js` |
+| Optional permission declined, **with the current UI** | Contract test "no mailbox scope". The old UI was observed working without the permission at 13:43 |
+| Very long threads, large mailboxes (relationship build with 100 sent messages) | `payload.test.js` (60-message thread); large-mailbox timing unmeasured |
+| Recurrence of the Gmail API stall | Observed once; frequency unknown |
+| Hebrew-Gmail rendering of the **latest** Detailed analysis and Welcome screens | Strict card tests; the owner has reviewed earlier iterations |
+
+## 8. Automated test results (final run)
+
+| Suite | Result |
+|---|---|
+| Backend (pytest) | **216 passed**, 0 failed |
+| Add-on (node --test) | **72 passed**, 0 failed |
+| Contract (real add-on payload → live backend) | 2/2 paths OK |
+| Public-endpoint checks | healthz 200 · analyze/status without key 401 · docs/openapi 404 · 2 MB 413 |
+
+## 9. Known limitations and residual risks
+
+- **Gmail API stalls** (F-12) and the **lack of a fetch timeout** (F-13) can produce "Unable to load content".
+- **Quick tunnel:** no SLA, and the URL changes on restart (hosting pending).
+- **Blind spots:** plain-text phish with clean authentication; image-based content; no reputation data; English-only request patterns.
+- **Relationship checks need `gmail.readonly`,** which is broad. The code reads only Sent-mail headers and the open email.
+- **Demo mailbox authentication headers are simulated** (Gmail's insert API performs no checks).
+- **The edge suite is self-authored**, a sanity check rather than a benchmark.
+
+## 10. PASS / FAIL / NOT VERIFIED
+
+| Requirement | Status |
+|---|---|
+| Untrusted input validated and bounded | PASS |
+| Malformed, nested, oversized and unusual-encoding input handled | PASS |
+| Prompt-injection content can't lower a verdict | PASS |
+| No SSRF from the backend (no outbound calls) | PASS |
+| Add-on outbound fetch restricted to an allow-list | **FAIL (open, F-09)**: needs stable hostname |
+| HTML/script injection into cards prevented | PASS |
+| API authentication enforced | PASS (incl. over the public tunnel) |
+| Rate limiting and size limits | PASS |
+| Secrets kept out of git and the UI | PASS |
+| Log privacy | PASS |
+| Least-privilege scopes | PASS (with the documented `gmail.readonly` trade-off) |
+| No developer diagnostics in the demo build | PASS (add-on) / **OPEN (backend dev mode, F-08)** |
+| Demo scenarios correct in real Gmail | PASS (10/10) |
+| Hard negatives stay Low | PASS 16/17 (F-16 open) |
+| Explanations grounded and hedged | PASS |
+| Error states in real Gmail | NOT VERIFIED |
+| Hebrew-Gmail rendering of the latest Detailed analysis and Welcome screens | NOT VERIFIED (pending owner review) |
+
+## 11. Readiness checklist (live demo)
+
+- [x] All automated suites green
+- [x] Production add-on build live, no developer tools
+- [x] All 10 demo scenarios verified in real Gmail
+- [x] No secrets in git
+- [ ] Backend restarted with `MAILLENS_ENV=prod` (F-08)
+- [ ] Stable hosting chosen; `urlFetchWhitelist` added (F-09)
+- [ ] Owner decision on F-16 (newsletter false positive)
+- [ ] Owner visual approval of the Detailed analysis content (Phase 2 item) and the Welcome screen
+- [ ] Optional: one real-Gmail error-state check (stop the backend, open an email, see "unreachable", restart)
+- [ ] Warm-up run before presenting (open one email to populate caches)
+- [ ] Before publishing: switch the commit email to a GitHub noreply address (F-17)
