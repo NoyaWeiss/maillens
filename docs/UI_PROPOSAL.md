@@ -1,6 +1,9 @@
 # Phase 2: card redesign proposal, v3 (information architecture)
 
-Status: **proposal v3, awaiting owner approval of the structure.** The v1 card (commit `3ba2f43`)
+Status: **v3 main card implemented and APPROVED by the owner in real Gmail (2026-11-11); preserve it.**
+Detailed analysis and Welcome screens: proposal v4 below, awaiting approval.
+
+Previous status: proposal v3, awaiting owner approval of the structure. The v1 card (commit `3ba2f43`)
 and the v2 proposal were not approved. Phase 2 closes only when the owner approves both this
 hierarchy and the actual result in Hebrew-language Gmail.
 
@@ -233,3 +236,145 @@ vector and findings are byte-identical to the current backend.
 2. Push to the existing project; the owner reviews T5, T7, T8 (High), T6 (Suspicious),
    T1, T2, T3 (Low), T9 (Inconclusive) and an error state in Hebrew Gmail on the side panel.
 3. Phase 2 closes on the owner's visual approval.
+
+---
+
+# v4 proposal: Detailed analysis and Welcome screens (awaiting approval)
+
+The approved main card is unchanged. All developer-facing information (request IDs, rule IDs,
+signal vectors, probe, direction and render tests) leaves the user interface. It moves to an
+explicitly isolated **Developer tools** screen that exists only in dev builds; production builds
+contain none of it.
+
+## Detailed analysis (pushed card)
+
+```
+ ← Detailed analysis                    CardHeader title
+   High risk · risk index 75/100        subtitle (context, no IDs)
+
+ How was this decision made?            bold heading
+ A strong warning sign appeared together
+ with a request that is hard to undo.
+ Together, they make this High risk.
+ The risk index shows where this email
+ sits within its risk level. It is not
+ a probability.                         grey
+
+ Evidence found
+ ↩  Reply address changed               bold title (icon)
+    Replies now go to a different
+    address than earlier messages in
+    this thread.
+    Seen in this email                  grey tag
+    Sender                              grey key
+    billing@acmesupply.example          value, grey, isolated
+    Replies go to
+    acme.supply.accounts@gmail.example
+ ─────────────────────────────────────  divider between findings only
+ 🏦 Asks to change bank details
+    It asks you to pay a new account.
+    Based on the wording
+    Quoted from the email
+    "…kindly wire the INV-2207 payment
+    to our new account…"
+
+ Analysis coverage
+ 10 checks completed · 3 not applicable
+ · 0 unavailable
+ Completed checks show what was
+ examined, not how certain the verdict
+ is.                                    grey
+   ▸ Show details                       collapsible
+     Completed: Sender authentication,
+     Reply address, Display name, Known
+     contacts, Look-alike domains, Sender
+     familiarity, Thread consistency,
+     Hidden content, Request wording,
+     Pressure language
+     Not applicable: Links and URLs (none
+     in this email), Attachments (none)
+     False-alarm safeguards: none needed
+
+ Limitations
+ MailLens examines this email and your
+ email history only.
+   ▸ Show details
+     • No threat-intelligence or website
+       reputation lookups
+     • Attachments are not opened, only
+       their names and types are checked
+     • Text inside images is not read
+     • Request detection is English-only
+     • "Known contact" means someone you
+       emailed recently
+     • A well-made attack from a new,
+       authenticated sender can look clean
+```
+
+Inconclusive differs only in content: "Unavailable: Sender authentication (no results found,
+common for forwarded mail)", and a decision sentence that explains why Low would be misleading.
+Low shows "No check found a contradiction…" and "Evidence found: Nothing contradicted the email's claims."
+
+## Welcome screen (homepage)
+
+```
+ [🛡] Welcome to MailLens                CardHeader with a circular shield image
+      Email risk analysis               subtitle
+
+ MailLens checks whether an email is
+ what it claims to be, and explains any
+ risk in plain language.
+
+ ✓  Protection ready                    green bold; shown ONLY after a successful
+    Connected to the analysis service   authenticated check (see below)
+
+ ✉  Open an email to analyze it
+    The result appears here
+    automatically.
+
+                    Advanced settings   borderless button
+```
+Other states, same layout:
+- **Analysis service unavailable** (amber, cloud-off icon): "MailLens can't reach its analysis service right now."
+- **Setup required** (grey): "MailLens isn't connected yet." with an **Open advanced settings** button.
+
+## Advanced settings (pushed; also the ⋮ menu action)
+
+```
+ ← Advanced settings
+ Analysis service
+   Service URL       [ https://… ]       text input (URL is not a secret)
+   API key           [            ]      empty; "A key is saved. Enter a new one to replace it."
+   [ Save ]
+   Status: Connected                     after a successful check
+ Relationship checks
+   On / Off  · [Enable]
+ Developer tools                         dev builds ONLY: probe last email, direction
+                                         and render tests, last request ID
+```
+The API key is never displayed or echoed back, only replaced.
+
+## How it is built (CardService)
+
+| Element | Widget |
+|---|---|
+| Bold headings | TextParagraph `<b>…</b>` (as on the approved main card) |
+| Finding title + sentence + tag | DecoratedText: Material icon, text = bold title + sentence, bottomLabel = tag |
+| Evidence key/value | DecoratedText: topLabel = key (plain), text = value in grey, isolated |
+| Divider between findings | `CardService.newDivider()` |
+| Expandable details | CardSection `setCollapsible(true)`, `setNumUncollapsibleWidgets(2)` (heading + summary stay visible) |
+| Welcome logo | CardHeader `setImageUrl` (Google-hosted shield icon) + `ImageStyle.CIRCLE` |
+| Status row | DecoratedText with icon and coloured bold text; not colour-only (word + icon) |
+| Settings | TextInput (URL, key), TextButton Save, notification on save |
+| Direction | Variant C `ltr_()` on every line; addresses get their own isolate |
+
+## Backend support (presentation only, protected by the decision snapshot test)
+
+1. `decision_explanation`: one plain-language paragraph per gate, with no rule IDs.
+2. Per finding `details: [{label, value}]` (e.g. Sender / Replies go to), set where the evidence
+   is created, so addresses are shown as labelled values instead of buried in sentences.
+3. Friendly check names with a reason for "not applicable" and "unavailable", plus plain-language
+   safeguards and limitations.
+4. A tiny authenticated `GET /v1/status` (API key required, rate-limited, returns only `{"status":"ok"}`)
+   so "Protection ready" means the service is reachable **and** the key is accepted. `/healthz`
+   alone can't tell whether the key is valid.
