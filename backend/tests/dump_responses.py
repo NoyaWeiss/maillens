@@ -17,7 +17,11 @@ CASES = {
     "t6_no_relationship": dict(key="t6", relationship=False), "t1_no_relationship": dict(key="t1", relationship=False),
 }
 
-out = {name: json.loads(run(c.pop("key"), **c).model_dump_json()) for name, c in CASES.items()}
-path = Path(__file__).resolve().parents[2] / "addon" / "tests" / "fixtures" / "responses.json"
-path.write_text(json.dumps(out, indent=1))
-print(f"wrote {len(out)} responses to {path}")
+if __name__ == "__main__":
+    out = {}
+    for name, case in CASES.items():
+        c = dict(case)
+        out[name] = json.loads(run(c.pop("key"), **c).model_dump_json())
+    path = Path(__file__).resolve().parents[2] / "addon" / "tests" / "fixtures" / "responses.json"
+    path.write_text(json.dumps(out, indent=1))
+    print(f"wrote {len(out)} responses to {path}")
