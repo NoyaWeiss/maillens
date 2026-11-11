@@ -67,3 +67,39 @@ def test_findings_carry_titles():
     for r in RESP.values():
         for f in r.findings + r.also_observed:
             assert f.title and f.summary and not RAW.search(f.title + f.summary)
+
+
+# ---------------------------------------------------------------- Detailed analysis (v4)
+INTERNAL = re.compile(r"\b(?:H-[ABC]|S-[AD]|INC|S\d{1,2}|D\d|A\d|E\d|N[01?])\b")
+
+
+@pytest.mark.parametrize("name", RESP)
+def test_detailed_analysis_fields(name):
+    r = RESP[name]
+    assert r.decision_explanation and not INTERNAL.search(r.decision_explanation)
+    for c in r.checks:
+        assert c.label and not INTERNAL.search(c.label)
+        if c.state != "ran":
+            assert c.note, f"{name}: {c.id} {c.state} needs a plain reason"
+    for s in r.safeguards:
+        assert not INTERNAL.search(s), s
+    for f in r.findings:
+        assert f.details, f"{name}: {f.signal} has no evidence values"
+        assert all(d.label and d.value for d in f.details)
+
+
+def test_evidence_values_are_exact():
+    t5 = {d.label: d.value for d in RESP["t5"].findings[0].details}
+    assert t5 == {"Sender": "billing@acmesupply.example", "Replies go to": "acme.supply.accounts@gmail.example"}
+    t7 = {d.label: d.value for f in RESP["t7"].findings if f.signal == "S5" for d in f.details}
+    assert t7 == {"Resembles": "acmesupply.example", "Actual domain": "acmesupp1y.example"}
+    t8 = {d.label: d.value for f in RESP["t8"].findings if f.signal == "S9" for d in f.details}
+    assert t8 == {"Link text shows": "northwindbank[.]example", "Link opens": "login[.]northwind-verify[.]example"}
+
+
+def test_safeguards_and_privacy_wording():
+    assert any("sending-platform" in s for s in RESP["t1"].safeguards)
+    assert any("preview line" in s for s in RESP["t3"].safeguards)
+    assert "when you allow it" in RESP["t1"].limitations_summary
+    assert any("read access to your mailbox" in x for x in RESP["t1"].limitations)
+    assert {c.id: c.note for c in RESP["t9"].checks}["S1"].startswith("no authentication results")

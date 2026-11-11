@@ -46,3 +46,9 @@ def test_oversized_field_rejected(client, headers):
 
 def test_dev_probe_endpoint_disabled_by_default(client, headers):
     assert client.post("/v1/dev/probe-report", json=[], headers=headers).status_code == 404
+
+
+def test_status_requires_key(client, headers):
+    assert client.get("/v1/status").status_code == 401
+    r = client.get("/v1/status", headers=headers)
+    assert r.status_code == 200 and r.json() == {"status": "ok"}

@@ -97,6 +97,11 @@ class Group(StrEnum):
     ASK = "ASK"
 
 
+class DetailOut(BaseModel):
+    label: str
+    value: str
+
+
 class FindingOut(BaseModel):
     signal: str
     group: Group
@@ -108,6 +113,7 @@ class FindingOut(BaseModel):
     excerpt: str = ""
     title: str = ""     # presentation: short, address-free
     summary: str = ""   # presentation: one neutral sentence
+    details: list[DetailOut] = []  # presentation: labelled evidence values (Detailed analysis)
 
 
 class ReasonOut(BaseModel):
@@ -125,7 +131,8 @@ class CheckOut(BaseModel):
     id: str
     name: str
     state: CheckState
-    note: str = ""
+    note: str = ""      # plain-language reason for not_applicable / unavailable
+    label: str = ""     # plain-language check name
 
 
 class RequestOut(BaseModel):
@@ -160,3 +167,7 @@ class AnalyzeResponse(BaseModel):
     checks: list[CheckOut]
     out_of_scope: list[str]
     assumptions: list[str]
+    decision_explanation: str = ""      # Detailed analysis: plain language, no rule IDs
+    safeguards: list[str] = []          # Detailed analysis: plain-language false-alarm guards applied
+    limitations_summary: str = ""
+    limitations: list[str] = []

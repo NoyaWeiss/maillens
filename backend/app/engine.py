@@ -4,8 +4,8 @@ from .decision import Decision, decide, explain_gate
 from .model import Context, Finding, SignalResult
 from . import presentation
 from .narrative import ARCHETYPES, archetype, story
-from .schemas import (ActionOut, AnalyzeRequest, AnalyzeResponse, Basis, CheckOut, CheckState, FindingOut,
-                      Group, ReasonOut, RequestOut)
+from .schemas import (ActionOut, AnalyzeRequest, AnalyzeResponse, Basis, CheckOut, CheckState, DetailOut,
+                      FindingOut, Group, ReasonOut, RequestOut)
 from .signals import auth as s1
 from .signals.ask import s13_s14
 from .signals.dest import s9_link_deception, s10_url_construction
@@ -54,11 +54,12 @@ SIGNALS = [("S1", _s1), ("S2", s2_reply_to), ("S3", s3_display_name), ("S4", s4_
            ("S11", s11_attachments), ("S12", s12_obfuscation)]
 
 
-def _out(f: Finding) -> FindingOut:
+def _out(f: Finding, ctx: Context) -> FindingOut:
     title, summary = presentation.finding_text(f)
     return FindingOut(signal=f.signal, group=f.group, entity=f.entity, level=f.level, basis=f.basis,
                       claim=f.claim[:300], reality=f.reality[:300], excerpt=f.excerpt[:160],
-                      title=title, summary=summary)
+                      title=title, summary=summary,
+                      details=[DetailOut(label=a, value=b) for a, b in presentation.evidence_details(f, ctx)])
 
 
 def analyze(req: AnalyzeRequest, request_id: str) -> tuple[AnalyzeResponse, Decision]:
@@ -95,8 +96,8 @@ def analyze(req: AnalyzeRequest, request_id: str) -> tuple[AnalyzeResponse, Deci
         request_id=request_id, verdict=d.verdict, score=d.score, headline=pres["summary"],
         category=pres["category"], archetype=ARCHETYPES[arch], pathway=d.pathway, gate=d.gate, gate_explanation=explain_gate(d),
         vector=d.vector, confidence=confidence, coverage_ran=ran, coverage_applicable=ran + unavailable,
-        findings=[_out(f) for f in sorted(d.kept, key=lambda f: (-f.level, f.signal))],
-        also_observed=[_out(f) for f in d.also_observed],
+        findings=[_out(f, ctx) for f in sorted(d.kept, key=lambda f: (-f.level, f.signal))],
+        also_observed=[_out(f, ctx) for f in d.also_observed],
         suppressed=list(dict.fromkeys(notes))[:30],
         request=RequestOut(level=ask.level, label=ask.pattern.label, excerpt=ask.excerpt[:200])
         if ask.pattern else None,
@@ -104,7 +105,11 @@ def analyze(req: AnalyzeRequest, request_id: str) -> tuple[AnalyzeResponse, Deci
         reasons=[ReasonOut(title=r.title, summary=r.summary, basis=r.basis) for r in pres["reasons"]],
         impact=pres["impact"], story=story(d, ask, arch),
         actions=[ActionOut(title=a.title, detail=a.detail) for a in pres["actions"]],
-        checks=[CheckOut(id=k, name=CHECK_NAMES[k], state=states[k]) for k in CHECK_NAMES],
+        checks=[CheckOut(id=k, name=CHECK_NAMES[k], state=states[k], label=presentation.CHECK_LABEL[k],
+                         note=presentation.check_note(k, states[k])) for k in CHECK_NAMES],
         out_of_scope=OUT_OF_SCOPE, assumptions=ASSUMPTIONS,
+        decision_explanation=presentation.decision_explanation(d),
+        safeguards=presentation.safeguards(notes),
+        limitations_summary=presentation.LIMITATIONS_SUMMARY, limitations=presentation.LIMITATIONS,
     )
     return resp, d

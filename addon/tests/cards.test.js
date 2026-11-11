@@ -19,7 +19,7 @@ function strictCardService() {
   const record = (what, v) => { nonEmpty(what, v); strings.push(String(v)); };
 
   const widget = (kind) => {
-    const w = { kind, buttons: [] };
+    const w = { kind, buttons: [], value: undefined };
     return chain(Object.assign(w, {
       setText(v) { record(`${kind}.text`, v); w.text = v; return this; },
       setTopLabel(v) { record(`${kind}.topLabel`, v); w.top = v; return this; },
@@ -29,11 +29,16 @@ function strictCardService() {
       setStartIcon(i) { w.icon = i; return this; },
       setTextButtonStyle(s) { w.style = s; return this; },
       addButton(b) { w.buttons.push(b); return this; },
+      setHint(v) { record(`${kind}.hint`, v); return this; },
+      setValue(v) { w.value = v; strings.push(String(v)); return this; },
+      setFieldName(v) { w.field = v; return this; },
     }));
   };
   const built = [];
   const CardService = {
     TextButtonStyle: STYLE,
+    ImageStyle: { CIRCLE: 'CIRCLE', SQUARE: 'SQUARE' },
+    newDivider: () => ({ kind: 'Divider' }),
     newCardBuilder: () => {
       const card = { sections: [], header: null };
       return chain(Object.assign(card, {
@@ -78,12 +83,14 @@ function strictCardService() {
 
 const responses = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'responses.json'), 'utf8'));
 
-function load(cs, dev) {
-  const ctx = { CardService: cs, CacheService: { getUserCache: () => ({ put() {}, get: () => null }) },
-    PropertiesService: { getUserProperties: () => ({ getProperty: () => '' }) }, console };
+function load(cs, dev, opts = {}) {
+  const props = opts.props || {};
+  const ctx = { CardService: cs, CacheService: { getUserCache: () => ({ put() {}, get: () => null, remove() {} }) },
+    PropertiesService: { getUserProperties: () => ({ getProperty: (k) => props[k] || '' }) }, console,
+    UrlFetchApp: { fetch: () => { if (opts.statusCode === 'throw') throw new Error('dns'); return { getResponseCode: () => opts.statusCode || 200 }; } } };
   if (dev) ctx.DEV_DEFAULTS = { url: 'https://x', apiKey: 'k', dev: true };
   vm.createContext(ctx);
-  for (const f of ['Cards.js', 'Auth.js', 'Extract.js']) {
+  for (const f of ['Cards.js', 'Auth.js', 'Extract.js', 'Settings.js', 'RenderTest.js']) {
     vm.runInContext(fs.readFileSync(path.join(__dirname, '..', f), 'utf8'), ctx, { filename: f });
   }
   return ctx;
@@ -135,12 +142,12 @@ for (const [name, r] of Object.entries(responses)) {
         assert.strictEqual(last.buttons[1].style, 'BORDERLESS');
         assert.ok(!/@|https?:\/\/|hxxp/.test(mainText(main)), `${name}: raw address or URL on main card`);
 
-        const techHeaders = tech.sections.map((s) => plain(s.header).replace(/[⁦⁩]/g, ''));
-        for (const h of ['How the verdict was reached', 'Evidence', 'Coverage and confidence', 'Limits and assumptions']) {
-          assert.ok(techHeaders.includes(h), `${name}: technical view lacks "${h}"`);
-        }
-        assert.strictEqual(techHeaders.includes('Developer'), dev, 'developer tools only in dev builds');
-        assert.ok(!techHeaders.includes('Attack story'), 'attack story no longer duplicated');
+        const techHeadings = tech.sections.map(firstText);
+        assert.deepStrictEqual(techHeadings, ['How was this decision made?', 'Evidence found', 'Analysis coverage', 'Limitations']);
+        const techText = mainText(tech) + '\n' + plain(tech.header.title || '');
+        assert.ok(!/Request [0-9a-f]{12}|\bRule\b|Signals |\bH-[ABC]\b|\bS\d{1,2} ·|D\d ·|Developer|probe|direction test/i.test(techText),
+          `${name}: developer-facing information in Detailed analysis`);
+        for (const s of tech.sections.slice(2)) assert.ok(s.collapsible, 'coverage and limitations are collapsed by default');
       });
     }
   }
@@ -181,4 +188,42 @@ test('technical addresses get their own isolate', () => {
   const ctx = load(strictCardService().CardService, false);
   const out = ctx.escapeTokens_('Replies go to acme.supply.accounts@gmail.example now');
   assert.ok(out.includes(LRI + 'acme.supply.accounts@gmail.example' + PDI));
+});
+
+
+test('welcome screen states: honest readiness, never "Protection ready"', () => {
+  const cases = [
+    [{ BACKEND_URL: 'https://svc.example', API_KEY: 'k' }, 200, 'Analysis service ready'],
+    [{ BACKEND_URL: 'https://svc.example', API_KEY: 'k' }, 'throw', 'Analysis service unavailable'],
+    [{ BACKEND_URL: 'https://svc.example', API_KEY: 'k' }, 401, 'Setup needs attention'],
+    [{}, 200, 'Setup required'],
+  ];
+  for (const [props, statusCode, expected] of cases) {
+    const { CardService, errors, built, strings } = strictCardService();
+    load(CardService, false, { props, statusCode }).buildWelcomeCard_();
+    assert.deepStrictEqual(errors, []);
+    assertIsolated(strings.filter((x) => !/^https:/.test(x)), 'welcome');
+    const text = mainText(built[0]);
+    assert.match(text, new RegExp(expected));
+    assert.ok(!/Protection ready|API key|Backend URL/.test(text), 'welcome shows no configuration fields');
+    assert.strictEqual(/Open an email to analyze it/.test(text), expected === 'Analysis service ready');
+  }
+});
+
+test('advanced settings never displays the saved API key; developer tools only in dev builds', () => {
+  for (const dev of [false, true]) {
+    const { CardService, errors, built, strings } = strictCardService();
+    load(CardService, dev, { props: { BACKEND_URL: 'https://svc.example', API_KEY: 'SECRET-KEY-123' } }).buildAdvancedSettingsCard_();
+    assert.deepStrictEqual(errors, []);
+    assert.ok(!strings.some((x) => x.includes('SECRET-KEY-123')), 'API key must never be rendered');
+    const keyInput = built[0].sections[0].widgets.find((w) => w.field === 'apiKey');
+    assert.strictEqual(keyInput.value, undefined, 'API key input is never pre-filled');
+    assert.strictEqual(mainText(built[0]).includes('Developer tools'), dev);
+  }
+});
+
+test('production error card shows no step or raw error', () => {
+  const { CardService, built } = strictCardService();
+  load(CardService, false).buildErrorCard_(new Error('Exception: internal'), 'm', 'call backend', []);
+  assert.ok(!/Step:|internal/.test(mainText(built[0])));
 });

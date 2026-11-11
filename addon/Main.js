@@ -6,9 +6,7 @@
 
 function onGmailMessage(e) {
   var settings = getSettings_();
-  if (!settings.url || !settings.apiKey) {
-    return buildSettingsCard_('Configure the backend to start analyzing email.');
-  }
+  if (!settings.url || !settings.apiKey) return buildWelcomeCard_();  // shows "Setup required"
   var granted = getGrantedScopes_();
   ensureCoreScopes_(granted); // outside try: may raise Google's re-consent prompt
 
@@ -25,6 +23,7 @@ function onGmailMessage(e) {
     var result = timer.time('backend', function () { return callAnalyze_(settings, payload, timer.summary()); });
     step = 'render';
     var card = timer.time('render', function () { return buildResultCard_(result, messageId, granted); });
+    if (isDevBuild_()) rememberForDevTools_(messageId, result.request_id);
     console.log('MailLens timing ' + timer.summary());  // visible in the editor's Executions page
     return card;
   } catch (err) {
@@ -46,16 +45,21 @@ function onReanalyze(e) {
 }
 
 function onHomepage() {
-  var s = getSettings_();
-  var status = s.url && s.apiKey ? 'Backend configured. Open an email to analyze it.'
-    : 'Backend not configured yet.';
-  return buildSettingsCard_(status);
+  return buildWelcomeCard_();
 }
 
 function onSettingsAction() {
   return CardService.newUniversalActionResponseBuilder()
-    .displayAddOnCards([buildSettingsCard_()])
+    .displayAddOnCards([buildAdvancedSettingsCard_()])
     .build();
+}
+
+function rememberForDevTools_(messageId, requestId) {
+  try {
+    var c = CacheService.getUserCache();
+    c.put('dev_last_message', String(messageId), 600);
+    c.put('dev_last_request', String(requestId), 600);
+  } catch (e) { /* best effort */ }
 }
 
 function openMessage_(e) {

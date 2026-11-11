@@ -51,6 +51,12 @@ def create_app() -> FastAPI:
         log.error("unhandled error type=%s", type(exc).__name__)
         return JSONResponse(status_code=500, content={"detail": "internal error"})
 
+    @app.get("/v1/status", dependencies=[Depends(require_key)])
+    def status_check() -> dict[str, str]:
+        # Authenticated readiness check for the add-on's welcome screen: proves the service is
+        # reachable AND the API key is accepted. Returns nothing else.
+        return {"status": "ok"}
+
     @app.get("/healthz")
     def healthz() -> dict[str, str]:
         return {"status": "ok"}

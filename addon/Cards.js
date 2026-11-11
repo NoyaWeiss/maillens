@@ -158,7 +158,7 @@ function reanalyzeButton_(messageId, style, text) {
       .setParameters({ messageId: String(messageId) }));
 }
 
-// ------------------------------------------------------------------ detailed analysis (technical evidence)
+// ------------------------------------------------------------------ detailed analysis (v4, approved)
 function onShowTechnical(e) {
   var raw = CacheService.getUserCache().get('result_' + e.parameters.requestId);
   if (!raw) return notify_('Details expired. Use Re-analyze to refresh them.');
@@ -166,83 +166,90 @@ function onShowTechnical(e) {
   return CardService.newActionResponseBuilder().setNavigation(CardService.newNavigation().pushCard(card)).build();
 }
 
-function buildTechnicalCard_(r, messageId) {
+/**
+ * User-facing "Detailed analysis": decision, evidence, coverage, limitations. No request IDs,
+ * rule IDs, signal vectors or developer tools (those live only in dev-build Developer tools).
+ * Concise by default: check lists, safeguards, assumptions and extended limitations are collapsed.
+ */
+function buildTechnicalCard_(r) {
+  var style = VERDICT_STYLE[r.verdict];
+  var subtitle = style.label + (r.score === null || r.score === undefined ? '' : ' · risk index ' + Number(r.score) + '/100');
   var card = CardService.newCardBuilder().setHeader(CardService.newCardHeader()
-    .setTitle(ltr_('Detailed analysis')).setSubtitle(ltr_('Request ' + escapeHtml_(r.request_id))));
+    .setTitle(ltr_('Detailed analysis')).setSubtitle(ltr_(subtitle)));
 
-  var scoreLine = r.score === null || r.score === undefined ? 'No risk index: the evidence is incomplete.'
-    : 'Risk index ' + Number(r.score) + '/100: a position within the verdict band, not a probability.';
-  card.addSection(section_('How the verdict was reached', [CardService.newTextParagraph().setText(ltrLines_([
-    escapeHtml_(r.gate_explanation),
-    escapeHtml_(scoreLine),
-    '<font color="' + GREY + '">' + escapeHtml_('Rule ' + (r.gate || 'none') + ' · Signals ' + r.vector) + '</font>',
-    '<font color="' + GREY + '">D strongest finding · A request level · E entities with strong findings</font>',
-    '<font color="' + GREY + '">P pressure · N familiarity (0 known, 1 new, ? unknown)</font>'
+  // A. How was this decision made?
+  var indexNote = r.score === null || r.score === undefined
+    ? 'No risk index is shown because the evidence is incomplete.'
+    : 'The risk index shows where this email sits within its risk level. It is not a probability.';
+  card.addSection(block_('How was this decision made?', [CardService.newTextParagraph().setText(ltrLines_([
+    escapeHtml_(r.decision_explanation),
+    '<font color="' + GREY + '">' + escapeHtml_(indexNote) + '</font>'
   ]))]));
 
-  var evidence = r.findings.map(function (f) {
-    var w = CardService.newDecoratedText().setText(ltrLines_([
-      '<b>' + escapeHtml_(f.title || f.signal) + '</b>',
-      'Claimed: ' + escapeTokens_(f.claim),
-      'Observed: ' + escapeTokens_(f.reality)
-    ])).setBottomLabel(ltr_(f.signal + ' · ' + levelWord_(f.level) + ' · ' + basisWord_(f.basis))).setWrapText(true);
-    return withIcon_(w, reasonIcon_(f.title || ''), f.signal);
+  // B. Evidence found
+  var evidence = [];
+  r.findings.forEach(function (f, i) {
+    if (i > 0) evidence.push(CardService.newDivider());
+    evidence.push(row_(reasonIcon_(f.title), f.title, f.summary, basisTag_(f.basis)));
+    (f.details || []).forEach(function (d) { evidence.push(detailRow_(d.label, d.value)); });
+    r.also_observed.filter(function (a) { return a.entity === f.entity && a.group === f.group; }).forEach(function (a) {
+      evidence.push(detailRow_('Also noticed', a.title));
+    });
   });
-  if (r.request) {
-    var q = CardService.newDecoratedText().setText(ltrLines_([
-      '<b>' + escapeHtml_(r.request.label) + '</b>',
-      r.request.excerpt ? 'Quote: “' + escapeTokens_(r.request.excerpt) + '”' : ''
-    ])).setBottomLabel(ltr_('S13 · ' + (r.request.level === 3 ? 'irreversible' : 'level ' + Number(r.request.level)) +
-      ' · based on the wording')).setWrapText(true);
-    evidence.push(withIcon_(q, reasonIcon_(r.request.label), 'S13'));
+  if (r.request && r.request.level >= 2) {
+    if (evidence.length) evidence.push(CardService.newDivider());
+    var req = (r.reasons || []).filter(function (x) { return x.basis === 'Based on the wording'; })[0];
+    evidence.push(row_(reasonIcon_(req ? req.title : r.request.label), req ? req.title : r.request.label,
+      req ? req.summary : '', 'Based on the wording'));
+    if (r.request.excerpt) evidence.push(detailRow_('Quoted from the email', '“' + r.request.excerpt + '”'));
   }
-  if (!evidence.length) evidence.push(CardService.newTextParagraph().setText(ltr_('No findings. Every check that ran was clean.')));
-  card.addSection(section_('Evidence', evidence));
+  if (!evidence.length) {
+    evidence.push(CardService.newTextParagraph().setText(ltr_("Nothing contradicted what the email claims.")));
+  }
+  card.addSection(block_('Evidence found', evidence));
 
-  var byState = { ran: [], unavailable: [], not_applicable: [] };
-  r.checks.forEach(function (c) { (byState[c.state] || []).push(c.id + ' ' + c.name); });
-  card.addSection(collapsible_('Coverage and confidence', [
-    [escapeHtml_(r.confidence + ' confidence · ' + Number(r.coverage_ran) + ' of ' + Number(r.coverage_applicable) +
-      ' applicable checks ran')],
-    ['<b>Ran</b>'].concat(byState.ran.map(escapeHtml_)),
-    ['<b>Unavailable</b>'].concat(byState.unavailable.length ? byState.unavailable.map(escapeHtml_) : ['None']),
-    ['<b>Not applicable</b>'].concat(byState.not_applicable.length ? byState.not_applicable.map(escapeHtml_) : ['None'])
-  ]));
+  // C. Analysis coverage (summary visible; lists collapsed)
+  var by = { ran: [], unavailable: [], not_applicable: [] };
+  r.checks.forEach(function (c) { (by[c.state] || []).push(c); });
+  var label = function (c) { return escapeHtml_(c.label || c.name) + (c.note ? ' (' + escapeHtml_(c.note) + ')' : ''); };
+  var coverage = collapsibleBlock_('Analysis coverage', [
+    by.ran.length + ' checks completed · ' + by.not_applicable.length + ' not applicable · ' +
+      by.unavailable.length + ' unavailable',
+    '<font color="' + GREY + '">Completed checks show what was examined, not how certain the verdict is.</font>'
+  ], [
+    ['<b>Completed</b>'].concat(by.ran.map(label)),
+    ['<b>Not applicable</b>'].concat(by.not_applicable.length ? by.not_applicable.map(label) : ['None']),
+    ['<b>Unavailable</b>'].concat(by.unavailable.length ? by.unavailable.map(label) : ['None']),
+    ['<b>False-alarm safeguards</b>'].concat(r.safeguards.length ? r.safeguards.map(escapeHtml_) : ['None needed'])
+  ]);
+  card.addSection(coverage);
 
-  card.addSection(collapsible_('Limits and assumptions', [
-    ['<b>Not analyzed</b>'].concat(r.out_of_scope.map(escapeHtml_)),
-    ['<b>Assumptions</b>'].concat(r.assumptions.map(escapeHtml_))
-  ]));
-  if (r.suppressed.length) {
-    card.addSection(collapsible_('Safeguards applied', [r.suppressed.map(escapeTokens_)]));
-  }
-  if (r.also_observed.length) {
-    card.addSection(collapsible_('Also observed (merged into the findings above)', [r.also_observed.map(function (f) {
-      return escapeHtml_(f.signal + ' · ' + (f.title || '')) + ': ' + escapeTokens_(f.reality);
-    })]));
-  }
-  if (isDevBuild_()) {
-    card.addSection(section_('Developer', [probeButton_(messageId), CardService.newTextButton()
-      .setText(ltr_('Text direction test (dev)')).setOnClickAction(CardService.newAction().setFunctionName('onBidiTest'))]));
-  }
+  // D. Limitations (summary visible; list collapsed)
+  card.addSection(collapsibleBlock_('Limitations', [escapeHtml_(r.limitations_summary)],
+    [r.limitations.map(function (x) { return '• ' + escapeHtml_(x); })]));
   return card.build();
 }
 
-function section_(header, widgets) {
-  var s = CardService.newCardSection().setHeader(ltr_(escapeHtml_(header)));
-  widgets.forEach(function (w) { s.addWidget(w); });
-  return s;
+/** Small grey key above an isolated value (addresses and domains get their own isolate). */
+function detailRow_(label, value) {
+  return CardService.newDecoratedText().setTopLabel(ltr_(label))
+    .setText('<font color="' + GREY + '">' + ltr_(escapeTokens_(value)) + '</font>').setWrapText(true);
 }
 
-/** Collapsible section; each entry is a list of lines rendered as one isolated paragraph. */
-function collapsible_(header, paragraphs) {
-  var s = CardService.newCardSection().setHeader(ltr_(escapeHtml_(header))).setCollapsible(true).setNumUncollapsibleWidgets(1);
-  paragraphs.forEach(function (lines) { s.addWidget(CardService.newTextParagraph().setText(ltrLines_(lines) || ltr_('-'))); });
-  return s;
+function basisTag_(b) {
+  return b === 'MAILBOX' ? 'From your email history' : b === 'HEURISTIC' ? 'Based on the wording' : 'Seen in this email';
 }
 
-function levelWord_(level) { return level === 3 ? 'deliberate construct' : level === 2 ? 'strong' : 'weak'; }
-function basisWord_(b) { return b === 'MAILBOX' ? 'from your email history' : b === 'HEURISTIC' ? 'based on the wording' : 'seen in this email'; }
+/** Bold heading + summary lines always visible; each extra paragraph is hidden until expanded. */
+function collapsibleBlock_(heading, summaryLines, hiddenParagraphs) {
+  var s = CardService.newCardSection().setCollapsible(true).setNumUncollapsibleWidgets(2)
+    .addWidget(CardService.newTextParagraph().setText(ltr_('<b>' + escapeHtml_(heading) + '</b>')))
+    .addWidget(CardService.newTextParagraph().setText(ltrLines_(summaryLines)));
+  hiddenParagraphs.forEach(function (lines) {
+    s.addWidget(CardService.newTextParagraph().setText(ltrLines_(lines) || ltr_('-')));
+  });
+  return s;
+}
 
 // ------------------------------------------------------------------ error card
 function buildErrorCard_(err, messageId, step, granted) {
@@ -253,10 +260,10 @@ function buildErrorCard_(err, messageId, step, granted) {
       .setWrapText(true), 'error', 'No verdict'),
     CardService.newTextParagraph().setText(ltr_(escapeHtml_(friendlyReason_(message))) + staleGrantHint_(message)),
     CardService.newButtonSet().addButton(reanalyzeButton_(messageId, CardService.TextButtonStyle.FILLED_TONAL, 'Try again')),
-    CardService.newTextParagraph().setText('<font color="' + GREY + '">' + ltrLines_(['Step: ' + escapeHtml_(step || 'unknown')]
-      .concat(isDevBuild_() ? [escapeHtml_(message.slice(0, 300)), scopeLine_(granted)] : [])) + '</font>')
+    CardService.newTextParagraph().setText('<font color="' + GREY + '">' + ltrLines_(isDevBuild_()
+      ? ['Step: ' + escapeHtml_(step || 'unknown'), escapeHtml_(message.slice(0, 300)), scopeLine_(granted)]
+      : ['If this keeps happening, close and reopen the email.']) + '</font>')
   ]);
-  if (isDevBuild_()) s.addWidget(probeButton_(messageId));
   return CardService.newCardBuilder().addSection(s).build();
 }
 

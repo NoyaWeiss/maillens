@@ -225,3 +225,129 @@ def build(d: Decision, ask: AskResult, arch: str, checks_ran: int) -> dict:
             "summary": _SUMMARY.get(arch, _SUMMARY["deception"]),
             "reasons": reasons[:2], "impact": _IMPACT.get(arch, _IMPACT["deception"]),
             "actions": _ACTIONS.get(arch, _ACTIONS["deception"])[:2]}
+
+
+# ================================================================ Detailed analysis (v4)
+_DECISION = {
+    "H-A": "One deliberate deception technique was found. On its own, that is enough for High risk.",
+    "H-B": "A strong warning sign appeared together with a risky request. Together, they make this High risk.",
+    "H-B2": "Strong warning signs were found in two separate parts of the email. Together, they make this High risk.",
+    "H-C": "The email asks for something hard to undo, and other signals support the concern. That makes it High risk.",
+    "S-D": "One strong warning sign was found, but nothing else confirms it. That makes it Suspicious.",
+    "S-A": "The email asks for something hard to undo. Nothing else looks wrong, but the request alone deserves verification.",
+    "INC": "The sender couldn't be verified, and the email contains a risky request or an anomaly. "
+           "Rating it Low would be misleading, so the result is Inconclusive.",
+    None: "No check found a contradiction between what the email claims and what was observed.",
+}
+
+
+def decision_explanation(d: Decision) -> str:
+    key = "H-B2" if d.gate == "H-B" and d.A < 2 else d.gate
+    return _DECISION.get(key, _DECISION[None])
+
+
+CHECK_LABEL = {
+    "S1": "Sender authentication", "S2": "Reply address", "S3": "Display name", "S4": "Known contacts",
+    "S5": "Look-alike domains", "S6": "Sender familiarity", "S7": "Thread consistency",
+    "S9": "Link text vs. destination", "S10": "Link construction", "S11": "Attachments",
+    "S12": "Hidden content", "S13": "Request wording", "S14": "Pressure language",
+}
+_NOT_APPLICABLE = {"S3": "no sender name", "S9": "no links in this email", "S10": "no links in this email",
+                   "S11": "no attachments", "S12": "no formatted (HTML) content"}
+_UNAVAILABLE = {"S1": "no authentication results, which is common for forwarded mail",
+                "S4": "relationship checks are off", "S6": "relationship checks are off",
+                "S5": "compared with known brands only; relationship checks are off"}
+
+
+def check_note(check_id: str, state: str) -> str:
+    if state == "not_applicable":
+        return _NOT_APPLICABLE.get(check_id, "")
+    if state == "unavailable":
+        return _UNAVAILABLE.get(check_id, "")
+    return ""
+
+
+# Guard notes are produced from fixed templates (signals/*.py); map each to plain language.
+_SAFEGUARDS = [
+    ("S3 ignored 'via'", "A sending-platform name (\"via …\") was not treated as impersonation."),
+    ("S12 ignored short hidden preheader", "A short hidden preview line, common in newsletters, was ignored."),
+    ("S14 pressure cues ignored", "Urgency wording was ignored because this is bulk mail."),
+    ("S9 downgraded", "Link mismatches count less in bulk mail."),
+    ("S9 skipped", "Links to the sender's own signing domain or a known email provider were trusted."),
+    ("S2 mid-thread change capped", "A reply-address change counts less in bulk mail."),
+    ("S2 corporate-to-freemail", "A personal reply address counts less in bulk mail."),
+    ("S2 different-domain", "A different reply domain was treated as weak evidence, since help desks often use one."),
+    ("S4 skipped", "Known-contact matching needs a full name, so a single name was not compared."),
+    ("S5 compared against the brand list only", "Look-alike domains were compared with known brands only."),
+    ("S1 SPF failure ignored", "An SPF failure was ignored because the message passed DKIM and DMARC, as forwarded mail often does."),
+    ("S10 shortener ignored", "Shortened links were not flagged in bulk mail."),
+    ("S11 HTML attachment kept", "A web-page attachment from a known, authenticated sender was treated as weak evidence."),
+]
+
+
+def safeguards(notes: list[str]) -> list[str]:
+    out = []
+    for n in notes:
+        text = next((t for prefix, t in _SAFEGUARDS if n.startswith(prefix)), None)
+        if text and text not in out:
+            out.append(text)
+    return out
+
+
+LIMITATIONS_SUMMARY = ("MailLens analyzes the opened email and, when you allow it, your sent-mail history "
+                       "to recognize people you know.")
+LIMITATIONS = [
+    "Relationship checks need read access to your mailbox. MailLens uses it to read the recipients of mail "
+    "you've sent and the headers of earlier messages in the open thread.",
+    "No threat-intelligence or website reputation lookups are made.",
+    "Attachments are not opened; only their names and types are checked.",
+    "Text inside images is not read.",
+    "Request detection works in English only.",
+    "A known contact means someone you emailed in the last 180 days.",
+    "A well-made attack from a new sender with valid authentication can look clean.",
+]
+
+
+def _m(pattern: str, text: str) -> str:
+    import re
+    m = re.search(pattern, text)
+    return m.group(1) if m else ""
+
+
+def evidence_details(f: Finding, ctx) -> list[tuple[str, str]]:
+    """Label/value pairs for one finding, from data the engine already holds (no detection changes)."""
+    s, rt = ctx.sender, ctx.reply_to
+    k = f.kind
+    if k == "auth_failed":
+        pairs = [("From domain", s.domain), ("Result", f.reality.removeprefix("Authentication failed: "))]
+    elif k.startswith("reply_"):
+        pairs = [("Sender", s.address), ("Replies go to", rt.address if rt else "")]
+    elif k == "display_embedded_address":
+        pairs = [("Name shows", f.excerpt), ("Actual sender", s.address)]
+    elif k == "display_brand_mismatch":
+        pairs = [("Name shows", s.display), ("Actual domain", s.reg)]
+    elif k == "display_role_only":
+        pairs = [("Display name", s.display), ("Actual sender", s.address)]
+    elif k == "known_name_new_address":
+        known = sorted((ctx.req.relationship.name_match_addresses if ctx.req.relationship else []))[:2]
+        pairs = [("You know this name as", ", ".join(known)), ("This email is from", s.address)]
+    elif k.startswith("lookalike_"):
+        pairs = [("Resembles", _m(r"^Looks like (\S+)", f.claim)), ("Actual domain", s.reg)]
+    elif k == "thread_fake_reply":
+        pairs = [("Subject", f.excerpt)]
+    elif k == "thread_new_sender":
+        pairs = [("Sender", s.address)]
+    elif k == "thread_signer_changed":
+        pairs = [("Signature", f.reality)]
+    elif k == "link_text_mismatch":
+        pairs = [("Link text shows", _m(r"^Link text shows (\S+)", f.claim)),
+                 ("Link opens", _m(r"actually opens (\S+)", f.reality))]
+    elif k.startswith("link_"):
+        pairs = [("Link", f.excerpt)]
+    elif k.startswith("attach_"):
+        pairs = [("File", f.excerpt)]
+    elif k.startswith("hidden_"):
+        pairs = [("Hidden text", f.excerpt)]
+    else:
+        pairs = []
+    return [(label, value[:160]) for label, value in pairs if value]
