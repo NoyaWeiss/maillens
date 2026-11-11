@@ -32,7 +32,7 @@ W = r"[^.!?\n]{0,60}?"  # bounded "same sentence" window between verb and object
 
 REQUEST_PATTERNS = [
     # ---- A = 3: irreversible or high-impact
-    P("bank_change", 3, "Change of payment or bank details",
+    P("bank_change", 3, "Change payment or bank details",
       rf"\b(?:bank(?:ing)?|payment|remittance|wire)\s+(?:account\s+)?(?:details|information|info|instructions)\b{W}"
       rf"\b(?:changed|updated|new|change|update)\b|\b(?:new|updated|different)\s+(?:bank\s+)?(?:account|iban|beneficiary|"
       rf"bank details|remittance details)\b{W}\b(?:pay|payment|payments|wire|transfer|send|use|remit)\b|"
@@ -41,48 +41,48 @@ REQUEST_PATTERNS = [
        "please send payments to our new bank account",
        "Updated remittance details: use our new IBAN"],
       ["your account details were updated successfully", "we sent the payment to your account on file"]),
-    P("gift_cards", 3, "Purchase of gift cards",
+    P("gift_cards", 3, "Buy gift cards",
       rf"\b(?:buy|purchase|get|pick up|send)\b{W}\bgift\s?cards?\b|\bgift\s?cards?\b{W}\b(?:scratch|codes?|photos?)\b",
       ["can you buy 5 Apple gift cards for me", "send me the gift card codes"],
       ["thanks for the gift card you sent last year!"]),
-    P("payroll", 3, "Payroll / direct-deposit redirection",
+    P("payroll", 3, "Change payroll or direct-deposit details",
       rf"\b(?:change|update|switch|redirect)\b{W}\b(?:direct deposit|payroll|salary)\b",
       ["I need to update my direct deposit before the next payroll"],
       ["payroll will run on Friday as usual"]),
-    P("code_relay", 3, "Relay of a verification / MFA code",
+    P("code_relay", 3, "Share a verification code",
       rf"\b(?:send|share|tell|give|forward|read|text)\b(?:\s+me|\s+us)?{W}\b(?:the\s+)?(?:code|otp|one[- ]time (?:code|password)|"
       rf"verification code|security code|2fa code)\b|\breply with\b{W}\bcode\b",
       ["please send me the code you just received", "reply with the 6-digit code"]),
     # (Code-delivery messages are excluded by a context guard in s13_s14, tested in test_signals.)
-    P("remote_access", 3, "Installation of a remote-access tool",
+    P("remote_access", 3, "Install a remote-access tool",
       rf"\b(?:install|download|run|open)\b{W}\b(?:anydesk|teamviewer|screenconnect|connectwise|ultraviewer|"
       rf"supremo|rustdesk|logmein|quick ?assist|remote (?:access|support|desktop) (?:tool|app|software))\b",
       ["please install AnyDesk so I can fix your laptop"],
       ["we no longer support TeamViewer licenses"]),
     # ---- A = 2: elevated
-    P("credentials", 2, "Sign in / enter credentials via a link",
+    P("credentials", 2, "Sign in through a link",
       rf"\b(?:sign|log)\s?in\b{W}\b(?:verify|confirm|password|keep|restore|avoid|review)\b|"
       rf"\bverify\s+your\s+(?:account|password|identity|login|mailbox)\b|\benter your (?:password|credentials)\b|"
       rf"\b(?:email|account)\s+password\b",
       ["Please sign in to verify your account", "Log in with your email password to keep receiving mail",
        "If not, sign in and review your account activity"],
       ["You signed in from a new device."]),
-    P("card_update", 2, "Update payment card",
+    P("card_update", 2, "Update payment card details",
       rf"\bupdate\b{W}\b(?:credit card|card details|payment method|billing information)\b",
       ["Please update your credit card to avoid interruption"], ["Your card ending 4242 was charged"]),
-    P("enable_content", 2, "Open an attachment and enable content",
+    P("enable_content", 2, "Enable content in an attachment",
       r"\benable\s+(?:content|editing|macros)\b", ["Click Enable Content to view the invoice"]),
-    P("channel_move", 2, "Move the conversation off email",
+    P("channel_move", 2, "Continue the conversation off email",
       rf"\b(?:text|message|contact|reach|add)\b(?:\s+me)?{W}\b(?:whatsapp|telegram|signal app|my (?:personal|private) "
       rf"(?:email|number|cell)|my cell)\b",
       ["text me on WhatsApp, I'm in a meeting", "contact me on my personal email"],
       ["our WhatsApp channel is now live"]),
-    P("favor_probe", 2, "Undisclosed favor or availability probe",
+    P("favor_probe", 2, "Do an unexplained favor",
       r"\bare you (?:at your desk|available|around|free)\b|\b(?:quick|small|urgent) favou?r\b|\bdo me a favou?r\b",
       ["Are you at your desk? I need a quick favor", "can you do me a favor"],
       ["thanks for the favor yesterday"]),
     # ---- A = 1: generic call to action
-    P("generic_cta", 1, "Generic call to action",
+    P("generic_cta", 1, "Follow a generic call to action",
       r"\b(?:click here|pay (?:the )?invoice|confirm your (?:email|subscription)|view (?:the )?(?:invoice|document))\b",
       ["Pay invoice", "click here to view"]),
 ]

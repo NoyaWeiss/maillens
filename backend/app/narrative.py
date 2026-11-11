@@ -62,6 +62,19 @@ ACTIONS = {
     "deception": ["Treat the message with caution and verify the sender through another channel."],
 }
 
+SUMMARY = {
+    "account_takeover": "Someone is using your conversation with this vendor to redirect a payment.",
+    "payment_redirection": "This email asks you to send money to new bank details.",
+    "gift_cards": "This email asks you to buy gift cards, a common scam payout.",
+    "code_theft": "This email asks for a verification code that protects your account.",
+    "remote_access": "This email asks you to give someone remote control of your computer.",
+    "impersonation": "Someone is posing as a person or organization you know.",
+    "lookalike": "The sender's domain imitates one you trust.",
+    "credential_phish": "This email tries to get your password through a deceptive link.",
+    "malware": "The attachment could run code or show a fake sign-in page.",
+    "deception": "This email misrepresents who sent it or where it leads.",
+}
+
 _REQUEST_ARCHETYPE = {"bank_change": "payment_redirection", "payroll": "payment_redirection",
                       "gift_cards": "gift_cards", "code_relay": "code_theft", "remote_access": "remote_access"}
 
@@ -96,8 +109,8 @@ def story(d: Decision, ask: AskResult, arch: str) -> list[str]:
     if arch == "none":
         lines = ["Nothing in this message contradicts what it claims about itself."]
         if ask.level >= 2 and ask.pattern:
-            lines.append(f"It does ask you to: {ask.pattern.label.lower()}. That is common in legitimate mail, "
-                         "but it is also what attackers ask for.")
+            lines.append(f"It does ask you to {ask.pattern.label[0].lower() + ask.pattern.label[1:]}. That is common "
+                         "in legitimate mail, but it is also what attackers ask for.")
         return lines
     lines = []
     top = _top(d)
@@ -105,7 +118,7 @@ def story(d: Decision, ask: AskResult, arch: str) -> list[str]:
         lines.append(f"The email claims: {top.claim}.")
         lines.append(f"In reality: {top.reality}.")
     if ask.pattern and ask.level >= 2:
-        lines.append(f"It then asks for: {ask.pattern.label.lower()}.")
+        lines.append(f"It then asks you to {ask.pattern.label[0].lower() + ask.pattern.label[1:]}.")
     if ask.pressure and ask.cues:
         lines.append(f"It adds pressure ({', '.join(ask.cues)}) to rush you past checking.")
     if arch in CONSEQUENCE:
@@ -125,17 +138,13 @@ def actions(d: Decision, ask: AskResult, arch: str) -> list[str]:
 
 
 def headline(d: Decision, ask: AskResult, arch: str) -> str:
-    top = _top(d)
+    """One sentence that summarizes; the Why rows carry the specifics, so this never repeats them."""
+    asks = ask.pattern.label[0].lower() + ask.pattern.label[1:] if ask.pattern else ""
     if d.verdict is Verdict.INCONCLUSIVE:
-        what = ask.pattern.label.lower() if ask.pattern and ask.level >= 2 else "an anomaly"
-        return f"We can't verify who sent this, and it contains {what}."
+        what = f"it asks you to {asks}" if ask.pattern and ask.level >= 2 else "it shows an anomaly"
+        return f"We can't verify who sent this, and {what}."
     if d.verdict is Verdict.LOW:
-        if ask.level >= 2 and ask.pattern:
-            return f"No contradictions found. It asks for: {ask.pattern.label.lower()}; use the site directly."
-        return "No contradictions found in this message."
-    if d.gate == "S-A" and ask.pattern:
-        return f"{ask.pattern.label} from a sender with no other red flags. Verify it out-of-band."
-    parts = [top.reality] if top else []
-    if ask.pattern and ask.level >= 2:
-        parts.append(f"asks for: {ask.pattern.label.lower()}")
-    return ("; ".join(parts) + ".")[:300]
+        return "Nothing in this email contradicts what it claims."
+    if d.gate == "S-A":
+        return "A known sender with no red flags, but the request is irreversible."
+    return SUMMARY.get(arch, SUMMARY["deception"])

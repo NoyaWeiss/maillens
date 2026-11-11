@@ -1,6 +1,11 @@
 # Phase 2: CardService redesign proposal
 
-Status: **proposal, awaiting owner approval. Nothing here is implemented yet.**
+Status: **approved 2026-11-11, compact variant**, with these owner decisions:
+- At most **2 "Why" rows** (the strongest finding plus the request row when A>=2) and at most **2 actions**.
+- The confidence line moves to Technical evidence. Exception (ours, for honesty): a quiet line stays
+  on the main card when confidence is **Limited**, because hiding it there would overstate certainty.
+- **Attack Story folded in**: the repeated claim/reality sentences are dropped; the consequence sentence
+  becomes the bottom line of the last "Why" row. The full story is in Technical evidence.
 
 ## What the platform allows in the Gmail message sidebar (researched)
 

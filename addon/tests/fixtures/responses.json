@@ -3,7 +3,7 @@
   "request_id": "test",
   "verdict": "LOW",
   "score": 8,
-  "headline": "No contradictions found in this message.",
+  "headline": "Nothing in this email contradicts what it claims.",
   "archetype": "No attack pattern",
   "pathway": null,
   "gate": null,
@@ -121,7 +121,7 @@
   "request_id": "test",
   "verdict": "LOW",
   "score": 8,
-  "headline": "No contradictions found in this message.",
+  "headline": "Nothing in this email contradicts what it claims.",
   "archetype": "No attack pattern",
   "pathway": null,
   "gate": null,
@@ -239,7 +239,7 @@
   "request_id": "test",
   "verdict": "LOW",
   "score": 8,
-  "headline": "No contradictions found in this message.",
+  "headline": "Nothing in this email contradicts what it claims.",
   "archetype": "No attack pattern",
   "pathway": null,
   "gate": null,
@@ -255,7 +255,7 @@
   ],
   "request": {
    "level": 1,
-   "label": "Generic call to action",
+   "label": "Follow a generic call to action",
    "excerpt": "or $1,250.00. Payment is due in 3 days. Pay invoice Questions? Visit our help center"
   },
   "pressure_cues": [],
@@ -363,7 +363,7 @@
   "request_id": "test",
   "verdict": "LOW",
   "score": 8,
-  "headline": "No contradictions found. It asks for: sign in / enter credentials via a link; use the site directly.",
+  "headline": "Nothing in this email contradicts what it claims.",
   "archetype": "No attack pattern",
   "pathway": null,
   "gate": null,
@@ -377,13 +377,13 @@
   "suppressed": [],
   "request": {
    "level": 2,
-   "label": "Sign in / enter credentials via a link",
+   "label": "Sign in through a link",
    "excerpt": "you don't need to do anything. If not, sign in and review your account activity at accounts.cloud"
   },
   "pressure_cues": [],
   "story": [
    "Nothing in this message contradicts what it claims about itself.",
-   "It does ask you to: sign in / enter credentials via a link. That is common in legitimate mail, but it is also what attackers ask for."
+   "It does ask you to sign in through a link. That is common in legitimate mail, but it is also what attackers ask for."
   ],
   "actions": [
    "If you need to act, go to the site directly instead of using the link."
@@ -486,7 +486,7 @@
   "request_id": "test",
   "verdict": "LOW",
   "score": 8,
-  "headline": "No contradictions found in this message.",
+  "headline": "Nothing in this email contradicts what it claims.",
   "archetype": "No attack pattern",
   "pathway": null,
   "gate": null,
@@ -607,7 +607,7 @@
   "request_id": "test",
   "verdict": "HIGH",
   "score": 75,
-  "headline": "You know Dana Cohen as dana.cohen@northwind.example; this message comes from dana.cohen.northwind@gmail.example (it is on an unrelated domain); asks for: undisclosed favor or availability probe.",
+  "headline": "Someone is posing as a person or organization you know.",
   "archetype": "Impersonation (BEC)",
   "pathway": "Deception",
   "gate": "H-B",
@@ -632,7 +632,7 @@
   "suppressed": [],
   "request": {
    "level": 2,
-   "label": "Undisclosed favor or availability probe",
+   "label": "Do an unexplained favor",
    "excerpt": "Quick favor Are you at your desk? I need a quick fa"
   },
   "pressure_cues": [
@@ -641,7 +641,7 @@
   "story": [
    "The email claims: From \"Dana Cohen\", a person you've corresponded with.",
    "In reality: You know Dana Cohen as dana.cohen@northwind.example; this message comes from dana.cohen.northwind@gmail.example (it is on an unrelated domain).",
-   "It then asks for: undisclosed favor or availability probe.",
+   "It then asks you to do an unexplained favor.",
    "The next message usually asks for money, gift cards or sensitive data."
   ],
   "actions": [
@@ -746,7 +746,7 @@
   "request_id": "test",
   "verdict": "HIGH",
   "score": 75,
-  "headline": "Replies now go to acme.supply.accounts@gmail.example; earlier messages from this sender in the thread had no such Reply-To; asks for: change of payment or bank details.",
+  "headline": "Someone is using your conversation with this vendor to redirect a payment.",
   "archetype": "Vendor account takeover",
   "pathway": "Deception",
   "gate": "H-B",
@@ -771,14 +771,14 @@
   "suppressed": [],
   "request": {
    "level": 3,
-   "label": "Change of payment or bank details",
+   "label": "Change payment or bank details",
    "excerpt": "office supplies Hello, Please note our bank details have changed due to an audit. Kindly wire the INV-22"
   },
   "pressure_cues": [],
   "story": [
    "The email claims: A reply in your existing thread with billing@acmesupply.example.",
    "In reality: Replies now go to acme.supply.accounts@gmail.example; earlier messages from this sender in the thread had no such Reply-To.",
-   "It then asks for: change of payment or bank details.",
+   "It then asks you to change payment or bank details.",
    "If you pay, the money goes to the attacker and is usually unrecoverable."
   ],
   "actions": [
@@ -884,7 +884,7 @@
   "request_id": "test",
   "verdict": "SUSPICIOUS",
   "score": 40,
-  "headline": "Change of payment or bank details from a sender with no other red flags. Verify it out-of-band.",
+  "headline": "A known sender with no red flags, but the request is irreversible.",
   "archetype": "Payment redirection",
   "pathway": "Request in context",
   "gate": "S-A",
@@ -898,12 +898,12 @@
   "suppressed": [],
   "request": {
    "level": 3,
-   "label": "Change of payment or bank details",
+   "label": "Change payment or bank details",
    "excerpt": "details Hello, From next month, please send payments to our new bank account. Updated IBAN: GB94 BARC 1020 1530 0934"
   },
   "pressure_cues": [],
   "story": [
-   "It then asks for: change of payment or bank details.",
+   "It then asks you to change payment or bank details.",
    "If the change is fraudulent, payments go to the attacker and are usually unrecoverable."
   ],
   "actions": [
@@ -1008,7 +1008,7 @@
   "request_id": "test",
   "verdict": "HIGH",
   "score": 79,
-  "headline": "Actually acmesupp1y.example, which uses look-alike characters.",
+  "headline": "The sender's domain imitates one you trust.",
   "archetype": "Look-alike domain impersonation",
   "pathway": "Deception",
   "gate": "H-A",
@@ -1161,7 +1161,7 @@
   "request_id": "test",
   "verdict": "HIGH",
   "score": 84,
-  "headline": "It contains instructions aimed at automated security scanners, trying to get the email marked safe; asks for: sign in / enter credentials via a link.",
+  "headline": "This email tries to get your password through a deceptive link.",
   "archetype": "Credential phishing",
   "pathway": "Deception",
   "gate": "H-A",
@@ -1206,7 +1206,7 @@
   "suppressed": [],
   "request": {
    "level": 2,
-   "label": "Sign in / enter credentials via a link",
+   "label": "Sign in through a link",
    "excerpt": "Action required: verify your account We detected unusual activity. Please si"
   },
   "pressure_cues": [
@@ -1216,7 +1216,7 @@
   "story": [
    "The email claims: Hidden text you cannot see.",
    "In reality: It contains instructions aimed at automated security scanners, trying to get the email marked safe.",
-   "It then asks for: sign in / enter credentials via a link.",
+   "It then asks you to sign in through a link.",
    "It adds pressure (deadline, threat) to rush you past checking.",
    "A password typed into the linked page goes straight to the attacker."
   ],
@@ -1323,7 +1323,7 @@
   "request_id": "test",
   "verdict": "INCONCLUSIVE",
   "score": null,
-  "headline": "We can't verify who sent this, and it contains sign in / enter credentials via a link.",
+  "headline": "We can't verify who sent this, and it asks you to sign in through a link.",
   "archetype": "Credential phishing",
   "pathway": null,
   "gate": "INC",
@@ -1350,14 +1350,14 @@
   ],
   "request": {
    "level": 2,
-   "label": "Sign in / enter credentials via a link",
+   "label": "Sign in through a link",
    "excerpt": "r mailbox has reached 98% of its quota. Log in with your email password to keep receiving mail: Increase quota"
   },
   "pressure_cues": [],
   "story": [
    "The email claims: Display name is a role title only (\"IT Helpdesk\").",
    "In reality: No person or organization is named; the sender is helpdesk@mailbox-support.example.",
-   "It then asks for: sign in / enter credentials via a link.",
+   "It then asks you to sign in through a link.",
    "A password typed into the linked page goes straight to the attacker."
   ],
   "actions": [
@@ -1462,7 +1462,7 @@
   "request_id": "test",
   "verdict": "SUSPICIOUS",
   "score": 40,
-  "headline": "Change of payment or bank details from a sender with no other red flags. Verify it out-of-band.",
+  "headline": "A known sender with no red flags, but the request is irreversible.",
   "archetype": "Payment redirection",
   "pathway": "Request in context",
   "gate": "S-A",
@@ -1478,12 +1478,12 @@
   ],
   "request": {
    "level": 3,
-   "label": "Change of payment or bank details",
+   "label": "Change payment or bank details",
    "excerpt": "details Hello, From next month, please send payments to our new bank account. Updated IBAN: GB94 BARC 1020 1530 0934"
   },
   "pressure_cues": [],
   "story": [
-   "It then asks for: change of payment or bank details.",
+   "It then asks you to change payment or bank details.",
    "If the change is fraudulent, payments go to the attacker and are usually unrecoverable."
   ],
   "actions": [
@@ -1588,7 +1588,7 @@
   "request_id": "test",
   "verdict": "LOW",
   "score": 8,
-  "headline": "No contradictions found in this message.",
+  "headline": "Nothing in this email contradicts what it claims.",
   "archetype": "No attack pattern",
   "pathway": null,
   "gate": null,
@@ -1605,7 +1605,7 @@
   ],
   "request": {
    "level": 1,
-   "label": "Generic call to action",
+   "label": "Follow a generic call to action",
    "excerpt": "or $1,250.00. Payment is due in 3 days. Pay invoice Questions? Visit our help center"
   },
   "pressure_cues": [],

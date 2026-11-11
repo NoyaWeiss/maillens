@@ -33,6 +33,18 @@ function onGmailMessage(e) {
   }
 }
 
+/**
+ * "Re-analyze" / "Try again": re-runs the analysis in place. Button events don't carry the
+ * current-message token, so it's recovered from the server-side cache (Body.js).
+ */
+function onReanalyze(e) {
+  var messageId = e.parameters.messageId;
+  var token = recallMessageToken_(e, messageId);
+  if (!token) return notify_('Close and reopen the email to analyze it again.');
+  var card = onGmailMessage({ gmail: { messageId: messageId, accessToken: token } });
+  return CardService.newActionResponseBuilder().setNavigation(CardService.newNavigation().updateCard(card)).build();
+}
+
 function onHomepage() {
   var s = getSettings_();
   var status = s.url && s.apiKey ? 'Backend configured. Open an email to analyze it.'
