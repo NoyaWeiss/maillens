@@ -1,0 +1,104 @@
+"""Orchestration: context -> signals -> decision core -> narrative -> response."""
+
+from .decision import Decision, decide, explain_gate
+from .model import Context, Finding, SignalResult
+from .narrative import ARCHETYPES, actions, archetype, headline, story
+from .schemas import (AnalyzeRequest, AnalyzeResponse, Basis, CheckOut, CheckState, FindingOut, Group,
+                      RequestOut)
+from .signals import auth as s1
+from .signals.ask import s13_s14
+from .signals.dest import s9_link_deception, s10_url_construction
+from .signals.identity import s2_reply_to, s3_display_name, s4_name_collision, s5_lookalike, s7_thread, sender_entity
+from .signals.payload import s11_attachments, s12_obfuscation
+
+CHECK_NAMES = {
+    "S1": "Authentication (Google's topmost result)", "S2": "Reply-To divergence", "S3": "Display-name deception",
+    "S4": "Known-contact name collision", "S5": "Look-alike domain", "S6": "Sender familiarity",
+    "S7": "Thread anomaly", "S9": "Link deception", "S10": "Deceptive URL construction",
+    "S11": "Risky attachment (metadata)", "S12": "Hidden content / scanner targeting",
+    "S13": "High-impact request", "S14": "Pressure and secrecy",
+}
+OUT_OF_SCOPE = ["URL reputation / threat-intelligence lookups", "Attachment contents (no sandbox)",
+                "Sender IP reputation", "Text inside images", "Non-English request patterns"]
+ASSUMPTIONS = [
+    "Authentication is read only from the topmost Authentication-Results header written by mx.google.com.",
+    "\"Known\" means you sent mail to that address or domain recently; it is not a statistical model.",
+    "The bulk-mail flag (List-Unsubscribe/Precedence) only downgrades weak findings; it never hides "
+    "level-3 or authentication findings.",
+    "Score is a position within the verdict band, not a probability.",
+]
+
+
+def _s1(ctx: Context) -> SignalResult:
+    r = SignalResult()
+    if not ctx.auth.trusted:
+        r.state = CheckState.UNAVAILABLE
+        r.notes.append("S1 unavailable: no Authentication-Results from mx.google.com (e.g. forwarded or imported mail)")
+        return r
+    lvl = s1.level(ctx.auth)
+    if lvl:
+        a = ctx.auth
+        r.findings.append(Finding(
+            "S1", Group.AUTH, sender_entity(ctx), lvl, Basis.OBSERVED,
+            claim=f"Sent by {ctx.sender.domain or 'the From domain'}",
+            reality=f"Authentication failed: DMARC {a.dmarc or 'none'} (policy {a.dmarc_policy or 'none'}), "
+                    f"SPF {a.spf or 'none'}, DKIM {a.dkim or 'none'}"))
+    elif ctx.auth.spf in {"fail", "softfail"}:
+        r.notes.append("S1 SPF failure ignored: DKIM/DMARC pass (typical of forwarding)")
+    return r
+
+
+SIGNALS = [("S1", _s1), ("S2", s2_reply_to), ("S3", s3_display_name), ("S4", s4_name_collision),
+           ("S5", s5_lookalike), ("S7", s7_thread), ("S9", s9_link_deception), ("S10", s10_url_construction),
+           ("S11", s11_attachments), ("S12", s12_obfuscation)]
+
+
+def _out(f: Finding) -> FindingOut:
+    return FindingOut(signal=f.signal, group=f.group, entity=f.entity, level=f.level, basis=f.basis,
+                      claim=f.claim[:300], reality=f.reality[:300], excerpt=f.excerpt[:160])
+
+
+def analyze(req: AnalyzeRequest, request_id: str) -> tuple[AnalyzeResponse, Decision]:
+    ctx = Context.build(req)
+    findings: list[Finding] = []
+    notes: list[str] = []
+    states: dict[str, CheckState] = {}
+    for sid, fn in SIGNALS:
+        res = fn(ctx)
+        findings += res.findings
+        notes += res.notes
+        states[sid] = res.state
+    states["S6"] = CheckState.UNAVAILABLE if ctx.familiarity == "?" else CheckState.RAN
+
+    ask = s13_s14(ctx)
+    states["S13"] = states["S14"] = CheckState.RAN
+    if ask.note:
+        notes.append(ask.note)
+
+    d = decide(findings, ask.level, ask.pressure, ctx.familiarity, auth_available=states["S1"] is CheckState.RAN)
+    arch = archetype(d, ask)
+
+    ran = sum(1 for s in states.values() if s is CheckState.RAN)
+    unavailable = sum(1 for s in states.values() if s is CheckState.UNAVAILABLE)
+    if states["S1"] is CheckState.UNAVAILABLE or any(states[s] is CheckState.UNAVAILABLE for s in ("S4", "S5", "S6")):
+        confidence = "Limited"
+    elif unavailable:
+        confidence = "Partial"
+    else:
+        confidence = "Full"
+
+    resp = AnalyzeResponse(
+        request_id=request_id, verdict=d.verdict, score=d.score, headline=headline(d, ask, arch),
+        archetype=ARCHETYPES[arch], pathway=d.pathway, gate=d.gate, gate_explanation=explain_gate(d),
+        vector=d.vector, confidence=confidence, coverage_ran=ran, coverage_applicable=ran + unavailable,
+        findings=[_out(f) for f in sorted(d.kept, key=lambda f: (-f.level, f.signal))],
+        also_observed=[_out(f) for f in d.also_observed],
+        suppressed=list(dict.fromkeys(notes))[:30],
+        request=RequestOut(level=ask.level, label=ask.pattern.label, excerpt=ask.excerpt[:200])
+        if ask.pattern else None,
+        pressure_cues=ask.cues or [],
+        story=story(d, ask, arch), actions=actions(d, ask, arch),
+        checks=[CheckOut(id=k, name=CHECK_NAMES[k], state=states[k]) for k in CHECK_NAMES],
+        out_of_scope=OUT_OF_SCOPE, assumptions=ASSUMPTIONS,
+    )
+    return resp, d
