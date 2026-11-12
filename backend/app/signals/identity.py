@@ -84,11 +84,16 @@ def s3_display_name(ctx: Context) -> SignalResult:
 
     lowered = " ".join(name.casefold().split())
     for brand, owned in BRANDS.items():
-        if re.search(rf"(?<![a-z0-9]){re.escape(brand)}(?![a-z0-9])", lowered) and s.reg not in owned:
+        # A brand never sends official mail from a consumer mailbox, even one the brand operates
+        # (e.g. "Google Docs" <x@gmail.com>), so free-mail never counts as brand-owned (RC3).
+        if re.search(rf"(?<![a-z0-9]){re.escape(brand)}(?![a-z0-9])", lowered) and \
+                (s.reg not in owned or is_freemail(s.domain)):
             r.findings.append(Finding.of("display_brand_mismatch", 
                 "S3", Group.IDENTITY, ent, 2, Basis.OBSERVED,
                 claim=f"Display name presents the sender as {brand.title()}",
-                reality=f"The message comes from {s.reg}, which is not a {brand.title()} domain", excerpt=name))
+                reality=(f"The message comes from a personal {s.reg} mailbox, not an official {brand.title()} address"
+                         if is_freemail(s.domain) else f"The message comes from {s.reg}, which is not a {brand.title()} domain"),
+                excerpt=name))
             return r
 
     if _ROLE_ONLY.match(lowered):

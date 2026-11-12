@@ -65,12 +65,15 @@ _SCANNER_BAIT = re.compile(
 _KEYWORDS = re.compile(r"password|verify|account|login|sign in|invoice|payment|bank", re.IGNORECASE)
 PREHEADER_MAX = 150  # short hidden text near the top is a normal email "preheader"
 
+# Disguised wording: invisible characters between two Latin letters, or words mixing Latin with
+# Cyrillic/Greek letters. Soft hyphens (U+00AD) are excluded: newsletters use them for hyphenation.
+_ZW_IN_WORD = re.compile("[A-Za-z][\u200b\u200c\u200d\u2060\ufeff]+[A-Za-z]")
+_MIXED_WORD = re.compile("\\b(?=\\w*[A-Za-z])(?=\\w*[\u0370-\u03ff\u0400-\u04ff])\\w+\\b")
+OBFUSCATION_MIN = 2
+
 
 def s12_obfuscation(ctx: Context) -> SignalResult:
     r = SignalResult()
-    if not ctx.req.message.html_body:
-        r.state = CheckState.NOT_APPLICABLE
-        return r
     for seg in ctx.body.hidden:
         if m := _SCANNER_BAIT.search(seg.text):
             r.findings.append(Finding.of("hidden_scanner_bait", 
@@ -92,6 +95,15 @@ def s12_obfuscation(ctx: Context) -> SignalResult:
                     reality=f"A {len(seg.text)}-character hidden block containing links or sensitive keywords",
                     excerpt=seg.text[:120]))
                 break
+    visible = ctx.body.visible_text or ctx.req.message.text_body
+    zw_words = _ZW_IN_WORD.findall(visible[:100_000])
+    mixed = _MIXED_WORD.findall(visible[:100_000])
+    if len(zw_words) + len(mixed) >= OBFUSCATION_MIN:
+        sample = (mixed or zw_words)[0]
+        r.findings.append(Finding.of("obfuscated_text",
+            "S12", Group.PAYLOAD, "body", 2, Basis.OBSERVED, claim="Ordinary-looking words",
+            reality=f"{len(zw_words) + len(mixed)} words contain invisible or look-alike characters",
+            excerpt=sample.encode("unicode_escape").decode()[:120]))
     if zw := zero_width_in_links(ctx):
         r.findings.append(Finding.of("hidden_zero_width", 
             "S12", Group.PAYLOAD, "body", 2, Basis.OBSERVED, claim="A normal-looking link",

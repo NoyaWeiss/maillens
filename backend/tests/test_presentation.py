@@ -104,3 +104,18 @@ def test_safeguards_and_privacy_wording():
     assert "when you allow it" in RESP["t1"].limitations_summary
     assert any("read access to your mailbox" in x for x in RESP["t1"].limitations)
     assert {c.id: c.note for c in RESP["t9"].checks}["S1"].startswith("no authentication results")
+
+
+def test_consent_phishing_is_not_described_as_a_sign_in_request():
+    from tests.factory import run as frun
+    r = frun("Google Docs <docs.share.notify@gmail.com>",
+             html='<p><a href="https://accounts.google.com/o/oauth2/v2/auth?client_id=1&scope=https://mail.google.com/">Open</a></p>')
+    assert r.category == "Possible consent phishing"
+    assert "sign in" not in r.headline.lower() and "access to your email" in r.headline
+    assert [a.title for a in r.actions][0] == "Don't grant access"
+
+
+def test_deceptive_link_without_sign_in_request_says_so_precisely():
+    from tests.factory import run as frun
+    r = frun("Shop <x@shop.example>", html='<p><a href="https://evil.example/x">bank.example</a></p>')
+    assert r.verdict in {"SUSPICIOUS", "HIGH"} and "sign in" not in r.headline.lower()

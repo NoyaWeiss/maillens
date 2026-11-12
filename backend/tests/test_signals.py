@@ -140,3 +140,58 @@ def test_s13_s14():
 def test_pressure_suspension_cue():
     r = run(html="<p>Verify within 24 hours to avoid suspension.</p>")
     assert {"deadline", "threat"} <= set(r.pressure_cues)
+
+
+# ------------------------------------------------------------------ Phase 3b fixes (RC2-RC4)
+def test_rc3_brand_on_freemail_is_not_official():
+    assert sig(run("Google Docs <docs.share.notify@gmail.com>"), "S3") == 2
+    assert sig(run("Microsoft account team <ms.team.alerts@outlook.com>"), "S3") == 2
+    assert sig(run("Google <no-reply@accounts.google.com>"), "S3") == 0
+    assert sig(run("Dana Cohen <dana.cohen@gmail.com>"), "S3") == 0          # a person, not a brand
+
+
+def test_rc4_oauth_consent_for_mail_scope():
+    evil = A("https://accounts.google.com/o/oauth2/v2/auth?client_id=1&scope=https://mail.google.com/", "Open")
+    assert sig(run(html=evil), "S10") == 2
+    ms = A("https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=1&scope=Mail.Read%20offline_access", "Open")
+    assert sig(run(html=ms), "S10") == 2
+    sso = A("https://accounts.google.com/o/oauth2/v2/auth?client_id=1&scope=openid%20email%20profile", "Sign in with Google")
+    assert sig(run(html=sso), "S10") == 0                                  # identity-only SSO stays clean
+    assert sig(run(html=A("https://docs.google.com/document/d/1", "Open")), "S10") == 0
+
+
+def test_rc2_disguised_wording():
+    assert sig(run(html="<p>Our bаnk detаils have chаnged.</p>"), "S12") == 2
+    assert sig(run(html="<p>Our ba​nk deta​ils have changed.</p>"), "S12") == 2
+    assert sig(run(html="<p>Привет, это обычный текст. Γεια σου κόσμε.</p>"), "S12") == 0   # real Cyrillic/Greek
+    assert sig(run(html="<p>Co­operation and 👩‍💻 emoji are fine.</p>"), "S12") == 0
+    r = run(html="<p>Our ba​nk deta​ils have changed. Please wi​re the payment to our new account.</p>")
+    assert r.request and r.request.level == 3                              # normalized before matching
+
+
+# ------------------------------------------------------------------ RC5 reported-speech guard (F-16)
+def ask_level(html, bulk=False):
+    r = run(html=html, bulk=bulk)
+    return r.request.level if r.request else 0
+
+
+def test_reported_speech_described_quoted_or_negated_is_not_a_request():
+    assert ask_level("<p>Scammers increasingly email finance teams claiming their bank details have changed and "
+                     "asking them to wire payments to a new account.</p>") == 0
+    assert ask_level('<p>A typical scam message says: "Please buy 5 gift cards and send me the codes."</p>') == 0
+    assert ask_level("<p>Reminder: we will never ask you to buy gift cards.</p>") == 0
+
+
+def test_reported_speech_cannot_hide_a_real_request():
+    # Real instructions to the reader survive even when wrapped in reported speech or warnings.
+    assert ask_level("<p>Our auditor asked me to let you know that our bank details have changed, "
+                     "so please wire this month's payment to the new account below.</p>") == 3
+    assert ask_level("<p>Scammers are targeting vendors, so please wire the payment to our new account today.</p>") == 3
+    assert ask_level("<p>We will never ask you to buy gift cards, but this time please buy 5 for the client.</p>") == 3
+    assert ask_level('<p>As the CEO said, "please buy 5 gift cards", so can you buy them now?</p>') == 3
+    assert ask_level("<p>Our bank details have changed. Please wire the payment to our new account.</p>") == 3
+
+
+def test_reported_speech_guard_is_not_tied_to_bulk_mail():
+    real = "<p>Please note our bank details have changed; kindly wire the payment to our new account.</p>"
+    assert ask_level(real, bulk=True) == 3     # a newsletter header never suppresses a genuine request

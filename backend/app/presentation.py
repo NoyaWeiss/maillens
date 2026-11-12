@@ -70,6 +70,8 @@ _FINDING_TEXT = {
                           "A link starts with a known brand name but leads to a different site."),
     "link_odd_port": ("Unusual link",
                       "A link uses an unusual network port."),
+    "link_oauth_consent": ("Asks an app for mailbox access",
+                           "A link opens a real sign-in consent screen that would give an app access to your email."),
     "link_shortener": ("Shortened link",
                        "A link hides its destination behind a URL shortener."),
     "attach_double_ext": ("Disguised program file",
@@ -86,6 +88,8 @@ _FINDING_TEXT = {
                             "Invisible text tries to convince security tools the email is safe."),
     "hidden_block": ("Hidden content",
                      "The email contains a large block of text you can't see."),
+    "obfuscated_text": ("Disguised wording",
+                        "Words contain invisible or look-alike characters, a common way to slip past filters."),
     "hidden_zero_width": ("Hidden characters in a link",
                           "A link contains invisible characters often used to evade filters."),
 }
@@ -129,6 +133,7 @@ _CATEGORY = {
     "impersonation": "Possible impersonation",
     "lookalike": "Look-alike sender domain",          # observed fact, not an inference
     "credential_phish": "Possible credential phishing",
+    "consent_phish": "Possible consent phishing",
     "malware": "Risky attachment",                    # observed fact
     "deception": "Deceptive email",
 }
@@ -141,6 +146,7 @@ _SUMMARY = {
     "impersonation": "The sender's name doesn't match where the email really comes from.",
     "lookalike": "The sender's domain imitates one you correspond with.",
     "credential_phish": "This email asks you to sign in, and parts of it are deceptive.",
+    "consent_phish": "A link asks you to give an app access to your email.",
     "malware": "An attachment is a file type that can run code or imitate a sign-in page.",
     "deception": "Parts of this email misrepresent who sent it or where it leads.",
 }
@@ -153,6 +159,7 @@ _IMPACT = {
     "impersonation": "Replying could lead to requests for money or sensitive information.",
     "lookalike": "Replies, payments or files could reach an impostor.",
     "credential_phish": "A password entered on the linked page could be stolen.",
+    "consent_phish": "An app granted access could read and send your email, even without your password.",
     "malware": "Opening the attachment could run harmful code or show a fake sign-in page.",
     "deception": "Acting on this email could expose you to fraud.",
 }
@@ -168,6 +175,8 @@ _ACTIONS = {
     "credential_phish": [Action("Don't use the link", "If you need to sign in, type the site's address yourself."),
                          Action("Report it as phishing", "Use Gmail's \"Report phishing\" option.")],
     "malware": [Action("Don't open the attachment", "Report the email to your security team.")],
+    "consent_phish": [Action("Don't grant access", "Don't approve the app on the consent screen."),
+                      Action("Remove it if you already did", "Revoke the app in your account's security settings.")],
     "deception": [Action("Verify the sender another way", "Use a channel you already trust before acting.")],
 }
 
@@ -221,8 +230,11 @@ def build(d: Decision, ask: AskResult, arch: str, checks_ran: int) -> dict:
         reasons.append(req)
     elif len(strongest) > 1:
         reasons.append(Reason(*finding_text(strongest[1]), BASIS_TAG[strongest[1].basis]))
+    summary = _SUMMARY.get(arch, _SUMMARY["deception"])
+    if arch == "credential_phish" and not (ask.pattern and ask.pattern.id == "credentials"):
+        summary = "A link in this email is not what it appears to be."
     return {"category": _CATEGORY.get(arch, _CATEGORY["deception"]),
-            "summary": _SUMMARY.get(arch, _SUMMARY["deception"]),
+            "summary": summary,
             "reasons": reasons[:2], "impact": _IMPACT.get(arch, _IMPACT["deception"]),
             "actions": _ACTIONS.get(arch, _ACTIONS["deception"])[:2]}
 
@@ -253,7 +265,7 @@ CHECK_LABEL = {
     "S12": "Hidden content", "S13": "Request wording", "S14": "Pressure language",
 }
 _NOT_APPLICABLE = {"S3": "no sender name", "S9": "no links in this email", "S10": "no links in this email",
-                   "S11": "no attachments", "S12": "no formatted (HTML) content"}
+                   "S11": "no attachments"}
 _UNAVAILABLE = {"S1": "no authentication results, which is common for forwarded mail",
                 "S4": "relationship checks are off", "S6": "relationship checks are off",
                 "S5": "compared with known brands only; relationship checks are off"}
@@ -281,6 +293,8 @@ _SAFEGUARDS = [
     ("S5 compared against the brand list only", "Look-alike domains were compared with known brands only."),
     ("S1 SPF failure ignored", "An SPF failure was ignored because the message passed DKIM and DMARC, as forwarded mail often does."),
     ("S10 shortener ignored", "Shortened links were not flagged in bulk mail."),
+    ("S13 ignored a described", "Wording that describes, quotes or rules out a request (for example in a warning) "
+                                "was not treated as a request to you."),
     ("S11 HTML attachment kept", "A web-page attachment from a known, authenticated sender was treated as weak evidence."),
 ]
 
@@ -349,6 +363,8 @@ def evidence_details(f: Finding, ctx) -> list[tuple[str, str]]:
         pairs = [("Link", f.excerpt)]
     elif k.startswith("attach_"):
         pairs = [("File", f.excerpt)]
+    elif k == "obfuscated_text":
+        pairs = [("Example (escaped)", f.excerpt)]
     elif k.startswith("hidden_"):
         pairs = [("Hidden text", defang_text(f.excerpt))]
     else:

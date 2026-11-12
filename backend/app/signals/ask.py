@@ -36,15 +36,18 @@ REQUEST_PATTERNS = [
       rf"\b(?:bank(?:ing)?|payment|remittance|wire)\s+(?:account\s+)?(?:details|information|info|instructions)\b{W}"
       rf"\b(?:changed|updated|new|change|update)\b|\b(?:new|updated|different)\s+(?:bank\s+)?(?:account|iban|beneficiary|"
       rf"bank details|remittance details)\b{W}\b(?:pay|payment|payments|wire|transfer|send|use|remit)\b|"
-      rf"\b(?:pay|payment|payments|wire|transfer|send|remit)\b{W}\b(?:new|updated|different)\s+(?:bank\s+)?(?:account|iban|beneficiary)\b",
+      rf"\b(?:pay|payment|payments|wire|transfer|send|remit)\b{W}\b(?:new|updated|different)\s+(?:bank\s+)?(?:account|iban|beneficiary)\b|"
+      r"\b(?:updated|new|revised|changed)\s+(?:remittance|payment|banking|bank|wire)\s+(?:instructions|details)\b",
       ["our bank details have changed, kindly wire the payment to our new account",
        "please send payments to our new bank account",
-       "Updated remittance details: use our new IBAN"],
+       "Updated remittance details: use our new IBAN",
+       "please use the updated remittance instructions attached for future invoices"],
       ["your account details were updated successfully", "we sent the payment to your account on file"]),
     P("gift_cards", 3, "Buy gift cards",
-      rf"\b(?:buy|purchase|get|pick up|send)\b{W}\bgift\s?cards?\b|\bgift\s?cards?\b{W}\b(?:scratch|codes?|photos?)\b",
-      ["can you buy 5 Apple gift cards for me", "send me the gift card codes"],
-      ["thanks for the gift card you sent last year!"]),
+      rf"\b(?:buy|purchase|get|pick up|send|need|require|get me)\b{W}\bgift\s?cards?\b|\bgift\s?cards?\b{W}\b(?:scratch|codes?|photos?)\b",
+      ["can you buy 5 Apple gift cards for me", "send me the gift card codes",
+       "I need 6 Google Play gift cards for a client today"],
+      ["thanks for the gift card you sent last year!", "Our gift card program launches in May"]),
     P("payroll", 3, "Change payroll or direct-deposit details",
       rf"\b(?:change|update|switch|redirect)\b{W}\b(?:direct deposit|payroll|salary)\b",
       ["I need to update my direct deposit before the next payroll"],
@@ -63,9 +66,11 @@ REQUEST_PATTERNS = [
     P("credentials", 2, "Sign in through a link",
       rf"\b(?:sign|log)\s?in\b{W}\b(?:verify|confirm|password|keep|restore|avoid|review)\b|"
       rf"\bverify\s+your\s+(?:account|password|identity|login|mailbox)\b|\benter your (?:password|credentials)\b|"
-      rf"\b(?:email|account)\s+password\b",
+      rf"\b(?:email|account)\s+password\b|"
+      r"\b(?:sign|log)\s?in\s+with\s+your\s+(?:email|work|office|microsoft|google|company)?\s*(?:account|password|credentials)\b",
       ["Please sign in to verify your account", "Log in with your email password to keep receiving mail",
-       "If not, sign in and review your account activity"],
+       "If not, sign in and review your account activity",
+       "You will need to sign in with your email account to view it"],
       ["You signed in from a new device."]),
     P("card_update", 2, "Update payment card details",
       rf"\bupdate\b{W}\b(?:credit card|card details|payment method|billing information)\b",
@@ -111,10 +116,24 @@ class AskResult:
     note: str = ""
 
 
+# Invisible characters inside words, and Cyrillic/Greek letters that look Latin, are used to split
+# keywords so pattern matching fails. Matching runs on a normalized copy (RC2, Phase 3b).
+_INVISIBLE = re.compile("[\u200b\u200c\u200d\u2060\ufeff]")
+_LOOKALIKE_LETTERS = str.maketrans({
+    "а": "a", "е": "e", "о": "o", "р": "p", "с": "c", "у": "y", "х": "x", "і": "i", "ј": "j", "ѕ": "s",
+    "А": "A", "Е": "E", "О": "O", "Р": "P", "С": "C", "Т": "T", "Н": "H", "К": "K", "М": "M", "В": "B",
+    "α": "a", "ο": "o", "ρ": "p", "ν": "v", "τ": "t", "ι": "i", "κ": "k",
+})
+
+
+def normalize_for_matching(text: str) -> str:
+    return _INVISIBLE.sub("", text).translate(_LOOKALIKE_LETTERS)
+
+
 def _scan_text(ctx: Context) -> str:
     text = ctx.body.visible_text or ctx.req.message.text_body
     text = strip_quotes_and_signature(text[:MAX_SCAN])
-    return f"{ctx.req.message.subject}\n{text}"
+    return normalize_for_matching(f"{ctx.req.message.subject}\n{text}")
 
 
 def s13_s14(ctx: Context) -> AskResult:
@@ -128,6 +147,9 @@ def s13_s14(ctx: Context) -> AskResult:
             if p.id == "code_relay" and re.search(r"never share|do not share|don'?t share|your (?:\w+ )?code is",
                                                   window, re.IGNORECASE):
                 continue  # guard: messages that deliver a code are not requests for one
+            if is_reported_not_requested(text, m.start(), m.end()):
+                out.note = "S13 ignored a described, quoted or negated request"
+                continue
             out.level, out.pattern = p.level, p
             subj_len = len(ctx.req.message.subject)
             if m.start() < subj_len:  # quote the body instead when it contains the same request
@@ -144,6 +166,43 @@ def s13_s14(ctx: Context) -> AskResult:
         out.cues.insert(0, "secrecy")
     out.pressure = secrecy or len(out.cues) >= 2
     return out
+
+
+# ---------------------------------------------------------------- reported-speech guard (RC5, F-16)
+_THREAT_ACTOR = re.compile(r"\b(?:scammers?|fraudsters?|attackers?|criminals?|cyber ?criminals?|phishers?|hackers?|"
+                           r"impostors?|imposters?|con artists?)\b", re.IGNORECASE)
+_EXAMPLE_CUE = re.compile(r"\b(?:scam|phishing|fraud|example|says|typical|such as|warning|fake)\b", re.IGNORECASE)
+_NEGATED_ASK = re.compile(r"\b(?:never|not|n't)\s+(?:\w+\s+){0,2}(?:ask|request|email|contact)\w*\s+(?:\w+\s+){0,2}$",
+                          re.IGNORECASE)
+_DIRECT_ADDRESS = re.compile(r"\b(?:please|kindly|you must|you need to|can you|could you|I need you to|go ahead and)\b",
+                             re.IGNORECASE)
+_QUOTED = re.compile(r"\"[^\"]{1,400}\"|“[^”]{1,400}”")
+
+
+def _sentence(text: str, start: int, end: int) -> tuple[int, int]:
+    left = max((m.end() for m in _SENTENCE_END.finditer(text, 0, start)), default=0)
+    right_m = _SENTENCE_END.search(text, end)
+    return left, right_m.end() if right_m else len(text)
+
+
+def is_reported_not_requested(text: str, start: int, end: int) -> bool:
+    """True when a request match is described, quoted as an example, or negated, not asked of the reader.
+
+    Never true if the same sentence also addresses the reader directly outside quotation marks, so an
+    attacker can't hide a real instruction behind "scammers..." or quotes (tests: test_reported_speech_*).
+    """
+    a, b = _sentence(text, start, end)
+    sentence, ms, me = text[a:b], start - a, end - a
+    quotes = [(q.start(), q.end()) for q in _QUOTED.finditer(sentence)]
+    outside = "".join(ch for i, ch in enumerate(sentence) if not any(qs <= i < qe for qs, qe in quotes))
+    if _DIRECT_ADDRESS.search(outside):
+        return False
+    in_quote = any(qs <= ms and me <= qe for qs, qe in quotes)
+    if in_quote and _EXAMPLE_CUE.search(sentence):
+        return True
+    if _THREAT_ACTOR.search(sentence[:ms]):
+        return True
+    return bool(_NEGATED_ASK.search(sentence[:ms]))
 
 
 # ---------------------------------------------------------------- quotes (presentation only)

@@ -39,8 +39,8 @@ CASES = [
         reply_to="support@acmesupply.zendesk.example", subject="Re: [Ticket 4821] Printer toner",
         in_reply_to="<t4821@acmesupply.example>",
         html="<p>Your replacement toner shipped today. Reply to this email if anything is missing.</p>")),
-    # Known false positive (Phase 3 finding F-07): request patterns match a *description* of a scam.
-    ("security_newsletter_discusses_phishing", "known_fp", "SUSPICIOUS", dict(
+    # Was a known false positive (F-16); fixed in Phase 3b by the reported-speech guard (RC5).
+    ("security_newsletter_discusses_phishing", "negative", "LOW", dict(
         from_header="Weekly Security <news@secweekly.example>", bulk=True, relationship=REL,
         html="<h2>This week in phishing</h2><p>Scammers increasingly email finance teams claiming their bank "
              "details have changed and asking them to wire payments to a new account. Some even hide text like "

@@ -6,7 +6,7 @@ so S9 and S10 on the same URL merge into one DEST finding (R1).
 
 import ipaddress
 import re
-from urllib.parse import urlsplit
+from urllib.parse import unquote, urlsplit
 
 from ..domains import BRANDS, ESP_TRACKERS, SHORTENERS, defang, normalize_domain, registrable
 from ..model import Context, Finding, SignalResult
@@ -16,6 +16,12 @@ _ZERO_WIDTH = re.compile("[​‌‍⁠﻿­]")
 _DOMAINISH = re.compile(r"^(?:https?://)?(?:www\.)?([a-z0-9-]{1,63}(?:\.[a-z0-9-]{1,63})+)(?:[/:?#]\S*)?$",
                         re.IGNORECASE)
 _BRAND_DOMAINS = {d for owned in BRANDS.values() for d in owned}
+
+# OAuth consent links that ask a third-party app for mailbox access (RC4, consent phishing).
+# Legitimate "Sign in with Google/Microsoft" links request identity scopes, not mail.
+_OAUTH_HOSTS = {"google.com", "microsoftonline.com", "live.com", "microsoft.com"}
+_OAUTH_PATH = re.compile(r"/o/oauth2|/oauth2/(?:v2\.0/)?authorize", re.IGNORECASE)
+_MAIL_SCOPE = re.compile(r"mail\.google\.com|/auth/gmail|\bMail\.(?:Read|ReadWrite|Send)|\bIMAP\.AccessAsUser", re.IGNORECASE)
 
 
 def _host(href: str) -> tuple[str, str, int | None]:
@@ -94,6 +100,11 @@ def s10_url_construction(ctx: Context) -> SignalResult:
             r.findings.append(Finding.of("link_brand_prefix", 
                 "S10", Group.DEST, ent, 2, Basis.OBSERVED, claim=f"Link looks like {hit}",
                 reality=f"{hit} is only a prefix; the site is really {defang(reg)}", excerpt=ex))
+            continue
+        if reg in _OAUTH_HOSTS and _OAUTH_PATH.search(link.href) and _MAIL_SCOPE.search(unquote(link.href)):
+            r.findings.append(Finding.of("link_oauth_consent",
+                "S10", Group.DEST, ent, 2, Basis.OBSERVED, claim="A document or sign-in link",
+                reality="It opens a consent screen asking an app for access to your email", excerpt=ex))
             continue
         if port and port not in {80, 443}:
             r.findings.append(Finding.of("link_odd_port", "S10", Group.DEST, ent, 2, Basis.OBSERVED, claim="A web link",
