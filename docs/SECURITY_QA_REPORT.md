@@ -367,6 +367,8 @@ the author on the 15 **unpublished** local commits before the first push. No pub
 | Backend outage → no verdict; Try again fails while down | PASS (owner observed; the tunnel returned 502) |
 | Recovery → Try again returns the verdict | PASS (analysis from Gmail at 11:34:44 after restart, High via H-B) |
 
+Outage/recovery test: **PASS**, confirmed by the owner in real Gmail on 2026-11-12.
+
 ### Final automated results
 - Backend: 226 passed, 1 warning in 0.77s
 - Add-on: ℹ pass 73 ℹ fail 0
