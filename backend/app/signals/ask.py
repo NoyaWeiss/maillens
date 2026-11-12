@@ -8,7 +8,7 @@ Inputs are length-capped and patterns use bounded quantifiers (no catastrophic b
 import re
 from dataclasses import dataclass
 
-from ..htmltext import strip_quotes_and_signature
+from ..htmltext import FORWARD_MARKER, strip_quotes_and_signature
 from ..model import Context
 
 MAX_SCAN = 20_000
@@ -37,12 +37,15 @@ REQUEST_PATTERNS = [
       rf"\b(?:changed|updated|new|change|update)\b|\b(?:new|updated|different)\s+(?:bank\s+)?(?:account|iban|beneficiary|"
       rf"bank details|remittance details)\b{W}\b(?:pay|payment|payments|wire|transfer|send|use|remit)\b|"
       rf"\b(?:pay|payment|payments|wire|transfer|send|remit)\b{W}\b(?:new|updated|different)\s+(?:bank\s+)?(?:account|iban|beneficiary)\b|"
-      r"\b(?:updated|new|revised|changed)\s+(?:remittance|payment|banking|bank|wire)\s+(?:instructions|details)\b",
+      r"\b(?:updated|new|revised|changed)\s+(?:remittance|payment|banking|bank|wire)\s+(?:instructions|details)\b|"
+      r"\b(?:update|change|amend)\s+(?:the\s+|our\s+)?(?:beneficiary|payee|bank(?:ing)?\s+details|remittance\s+details|wire\s+instructions)\b",
       ["our bank details have changed, kindly wire the payment to our new account",
        "please send payments to our new bank account",
        "Updated remittance details: use our new IBAN",
-       "please use the updated remittance instructions attached for future invoices"],
-      ["your account details were updated successfully", "we sent the payment to your account on file"]),
+       "please use the updated remittance instructions attached for future invoices",
+       "please update the beneficiary on file before paying the invoice"],
+      ["your account details were updated successfully", "we sent the payment to your account on file",
+       "please update your account details in the profile page"]),
     P("gift_cards", 3, "Buy gift cards",
       rf"\b(?:buy|purchase|get|pick up|send|need|require|get me)\b{W}\bgift\s?cards?\b|\bgift\s?cards?\b{W}\b(?:scratch|codes?|photos?)\b",
       ["can you buy 5 Apple gift cards for me", "send me the gift card codes",
@@ -133,12 +136,18 @@ _LOOKALIKE_LETTERS = str.maketrans({
 })
 
 
+_SPACED = re.compile(r"\b(?:[A-Za-z] ){2,}[A-Za-z]\b")
+
+
 def normalize_for_matching(text: str) -> str:
-    return _INVISIBLE.sub("", text).translate(_LOOKALIKE_LETTERS)
+    text = _INVISIBLE.sub("", text).translate(_LOOKALIKE_LETTERS)
+    return _SPACED.sub(lambda m: m.group(0).replace(" ", ""), text)
 
 
 def _scan_text(ctx: Context) -> str:
     text = ctx.body.visible_text or ctx.req.message.text_body
+    if ctx.trusted_forward and (fm := FORWARD_MARKER.search(text)):
+        text = text[: fm.start()]  # only the forwarder's own words are requests to the reader (F-18)
     text = strip_quotes_and_signature(text[:MAX_SCAN])
     return normalize_for_matching(f"{ctx.req.message.subject}\n{text}")
 
@@ -164,6 +173,8 @@ def s13_s14(ctx: Context) -> AskResult:
             out.source, out.excerpt = quote(text, m.start(), m.end(), subj_len)
             break
 
+    if out.level < 3:
+        _two_sentence_bank_change(text, out)
     if ctx.is_bulk:
         out.note = "S14 pressure cues ignored: bulk mail"
         return out
@@ -174,6 +185,26 @@ def s13_s14(ctx: Context) -> AskResult:
         out.cues.insert(0, "secrecy")
     out.pressure = secrecy or len(out.cues) >= 2
     return out
+
+
+# ---------------------------------------------------------------- two-sentence bank change (Phase 5b)
+_ACCOUNT_CHANGED = re.compile(r"\b(?:bank|banking|account|iban|beneficiary)\b[^.!?\n]{0,60}\b(?:closed|changed|frozen|moved|"
+                              r"switched|no longer)\b|\b(?:new|different)\s+(?:bank|account|iban)\b", re.IGNORECASE)
+_PAY_INSTRUCTION = re.compile(r"\b(?:send|pay|wire|remit|transfer)\b[^.!?\n]{0,60}\b(?:new|this|it|them|below|following|"
+                              r"instead)\b", re.IGNORECASE)
+
+
+def _two_sentence_bank_change(text: str, out) -> None:
+    """A bank change announced in one sentence and the payment instruction in the next."""
+    sents = [(m.start(), m.end()) for m in re.finditer(r"[^.!?\n]+[.!?]?", text)]
+    for (a1, b1), (a2, b2) in zip(sents, sents[1:]):
+        if _ACCOUNT_CHANGED.search(text, a1, b1) and (m := _PAY_INSTRUCTION.search(text, a2, b2)):
+            if is_reported_not_requested(text, m.start(), m.end()) or _THREAT_ACTOR.search(text, a1, b1):
+                continue  # described scam ("Scammers say ... They then ask you to ...")
+            pat = next(p for p in REQUEST_PATTERNS if p.id == "bank_change")
+            out.level, out.pattern = 3, pat
+            out.source, out.excerpt = quote(text, a1, b2, text.find("\n") if "\n" in text else 0)
+            return
 
 
 # ---------------------------------------------------------------- reported-speech guard (RC5, F-16)

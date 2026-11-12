@@ -4,7 +4,9 @@ from dataclasses import dataclass, field
 from email.utils import getaddresses, parseaddr
 
 from .domains import is_freemail, registrable
-from .htmltext import Link, ParsedBody, links_from_text, parse_html
+import re
+
+from .htmltext import FORWARD_MARKER, Link, ParsedBody, links_from_text, parse_html
 from .schemas import AnalyzeRequest, Basis, CheckState, Group
 from .signals.auth import AuthResult, parse_topmost
 
@@ -61,6 +63,9 @@ class Context:
     links: list[Link]
     dkim_regs: frozenset[str]
     familiarity: str  # "0" established, "1" unfamiliar, "?" unknown
+    # Phase 5b (F-18): a known, authenticated sender forwarding a message (e.g. a phish reported to IT).
+    # Links and requests AFTER the forwarded-message marker are treated as reported content.
+    trusted_forward: bool = False
 
     @property
     def relationship_available(self) -> bool:
@@ -81,8 +86,11 @@ class Context:
         body = parse_html(m.html_body) if m.html_body else ParsedBody(visible_text=m.text_body[:100_000])
         links = body.links if m.html_body else links_from_text(m.text_body)
         dkim_regs = frozenset(registrable(d) for d in auth.dkim_domains)
-        return cls(req, sender, reply_to, auth, is_bulk, body, links, dkim_regs,
-                   _familiarity(req, sender))
+        fam = _familiarity(req, sender)
+        visible = body.visible_text or m.text_body
+        is_fwd = bool(re.match(r"^\s*(?:fwd?|fw)\s*:", m.subject or "", re.IGNORECASE)) and bool(FORWARD_MARKER.search(visible))
+        return cls(req, sender, reply_to, auth, is_bulk, body, links, dkim_regs, fam,
+                   trusted_forward=is_fwd and fam == "0" and auth.passed)
 
 
 def _familiarity(req: AnalyzeRequest, sender: Address) -> str:

@@ -16,6 +16,7 @@ _ZERO_WIDTH = re.compile("[​‌‍⁠﻿­]")
 _DOMAINISH = re.compile(r"^(?:https?://)?(?:www\.)?([a-z0-9-]{1,63}(?:\.[a-z0-9-]{1,63})+)(?:[/:?#]\S*)?$",
                         re.IGNORECASE)
 _BRAND_DOMAINS = {d for owned in BRANDS.values() for d in owned}
+_BRAND_REGS = frozenset(_BRAND_DOMAINS)
 
 # OAuth consent links that ask a third-party app for mailbox access (RC4, consent phishing).
 # Legitimate "Sign in with Google/Microsoft" links request identity scopes, not mail.
@@ -39,9 +40,17 @@ def _host(href: str) -> tuple[str, str, int | None]:
 
 def _http_links(ctx: Context):
     for link in ctx.links:
+        if ctx.trusted_forward and link.forwarded:
+            continue  # reported content forwarded by a known, authenticated colleague (F-18)
         host, userinfo, port = _host(link.href)
         if host:
             yield link, host, userinfo, port
+
+
+def offsite_links(ctx: Context) -> list[str]:
+    """Visible links to a domain unrelated to the sender, its signing domain, known correspondents and ESPs."""
+    related = {ctx.sender.reg} | set(ctx.dkim_regs) | set(ctx.known_regs) | set(ESP_TRACKERS)
+    return [registrable(h) for l, h, _, _ in _http_links(ctx) if not l.hidden and registrable(h) not in related]
 
 
 def s9_link_deception(ctx: Context) -> SignalResult:
@@ -59,11 +68,14 @@ def s9_link_deception(ctx: Context) -> SignalResult:
         shown_reg = registrable(m.group(1))
         if shown_reg == href_reg:
             continue
-        if href_reg in trusted or href_reg in ESP_TRACKERS:
+        # Text showing a well-known brand's domain that the sender doesn't own is impersonation wherever the
+        # link really goes, so neither the own-domain guard nor bulk leniency applies to it (Phase 5b).
+        brand_text = shown_reg in _BRAND_REGS and ctx.sender.reg not in _BRAND_REGS
+        if (href_reg in trusted or href_reg in ESP_TRACKERS) and not brand_text:
             r.notes.append(f"S9 skipped {href_reg}: signing domain or known email provider")
             continue
-        level = 1 if ctx.is_bulk else 2
-        if ctx.is_bulk:
+        level = 1 if ctx.is_bulk and not brand_text else 2
+        if ctx.is_bulk and not brand_text:
             r.notes.append("S9 downgraded to level 1: bulk mail")
         r.findings.append(Finding.of("link_text_mismatch", 
             "S9", Group.DEST, f"domain:{href_reg}", level, Basis.OBSERVED,

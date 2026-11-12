@@ -86,7 +86,8 @@ def s3_display_name(ctx: Context) -> SignalResult:
     for brand, owned in BRANDS.items():
         # A brand never sends official mail from a consumer mailbox, even one the brand operates
         # (e.g. "Google Docs" <x@gmail.com>), so free-mail never counts as brand-owned (RC3).
-        if re.search(rf"(?<![a-z0-9]){re.escape(brand)}(?![a-z0-9])", lowered) and \
+        lead = " ".join(lowered.split()[:2])  # the brand must lead the name ("Zoom", "Wells Fargo Online"),
+        if re.search(rf"(?<![a-z0-9]){re.escape(brand)}(?![a-z0-9])", lead) and \
                 (s.reg not in owned or is_freemail(s.domain)):
             r.findings.append(Finding.of("display_brand_mismatch", 
                 "S3", Group.IDENTITY, ent, 2, Basis.OBSERVED,
@@ -138,6 +139,12 @@ def s4_name_collision(ctx: Context) -> SignalResult:
 
 
 # ---------------------------------------------------------------- S5 Lookalike domain
+# Words attackers bolt onto a real name ("acme-billing", "secure-paypal"). Neutral additions such as
+# "group", region or country codes are NOT included, so rebrands and subsidiaries aren't flagged.
+COMBO_WORDS = frozenset({"billing", "bill", "finance", "financial", "pay", "payment", "payments", "invoice", "invoices",
+                         "secure", "security", "verify", "verification", "login", "signin", "account", "accounts",
+                         "support", "portal", "docs", "doc", "alerts", "alert", "notify", "notification", "update",
+                         "updates", "helpdesk", "admin", "payroll", "remit", "remittance", "wire", "ap", "ar", "auth"})
 def s5_lookalike(ctx: Context) -> SignalResult:
     r = SignalResult()
     s = ctx.sender
@@ -171,6 +178,18 @@ def s5_lookalike(ctx: Context) -> SignalResult:
             lvl = 2 if dist == 1 else 1 if dist == 2 else 0
             if lvl and (best is None or lvl > best[0]):
                 best = (lvl, ref, why)
+    if not best:  # combosquatting: a known name plus a separator and a risk-indicating suffix/prefix
+        for ref, why in references:
+            ref_label = base_label(ref)
+            if len(ref_label) < 5 or ref_label == cand or ref_label not in cand:
+                continue
+            rest = cand.replace(ref_label, " ", 1).replace("-", " ").split()
+            if rest and all(w in COMBO_WORDS for w in rest):
+                r.findings.append(Finding.of("combosquat_domain",
+                    "S5", Group.IDENTITY, sender_entity(ctx), 2, Basis.MAILBOX if ref in known else Basis.OBSERVED,
+                    claim=f"Looks like {ref} ({why})",
+                    reality=f"Actually {s.reg}: the name with an added '{' '.join(rest)}', not the real domain", excerpt=s.reg))
+                break
     if best:
         lvl, ref, why = best
         how = "uses look-alike characters" if lvl == 3 else f"differs by {3 - lvl} character(s)"

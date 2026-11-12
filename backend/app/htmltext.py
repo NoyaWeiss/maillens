@@ -20,6 +20,7 @@ _HIDDEN_STYLE = re.compile(
     r"color\s*:\s*(?:#fff(?:fff)?|white)\b[^;]*;?[^\"]*background(?:-color)?\s*:\s*(?:#fff(?:fff)?|white)",
     re.IGNORECASE,
 )
+FORWARD_MARKER = re.compile(r"-{3,}\s*Forwarded message\s*-{3,}|Begin forwarded message:", re.IGNORECASE)
 _VOID = {"br", "img", "hr", "meta", "link", "input", "area", "base", "col", "embed", "source", "wbr"}
 _SKIP = {"script", "style", "head", "title"}
 _BLOCK = {"p", "div", "br", "li", "tr", "h1", "h2", "h3", "h4", "table", "blockquote"}
@@ -30,6 +31,7 @@ class Link:
     href: str
     text: str
     hidden: bool
+    forwarded: bool = False  # appears after a "Forwarded message" marker in the visible text
 
 
 @dataclass
@@ -59,6 +61,7 @@ class _Parser(HTMLParser):
         self.hidden: list[HiddenSegment] = []
         self.links: list[Link] = []
         self.anchor: dict | None = None
+        self.forward_seen = False
 
     @property
     def is_hidden(self) -> bool:
@@ -82,7 +85,7 @@ class _Parser(HTMLParser):
         if not was_hidden and self.is_hidden:
             self.hidden_start = self.visible_len
         if tag == "a" and len(self.links) < MAX_LINKS:
-            self.anchor = {"href": a.get("href", "")[:2048], "text": [], "hidden": self.is_hidden}
+            self.anchor = {"href": a.get("href", "")[:2048], "text": [], "hidden": self.is_hidden, "fwd": self.forward_seen}
 
     def handle_endtag(self, tag):
         if tag in _SKIP:
@@ -90,7 +93,7 @@ class _Parser(HTMLParser):
             return
         if tag == "a" and self.anchor is not None:
             self.links.append(Link(self.anchor["href"], " ".join("".join(self.anchor["text"]).split())[:500],
-                                   self.anchor["hidden"]))
+                                   self.anchor["hidden"], self.anchor["fwd"]))
             self.anchor = None
         was_hidden = self.is_hidden
         if self.overflow:
@@ -110,6 +113,8 @@ class _Parser(HTMLParser):
     def handle_data(self, data):
         if self.skip_depth:
             return
+        if not self.is_hidden and FORWARD_MARKER.search(data):
+            self.forward_seen = True
         if self.anchor is not None:
             self.anchor["text"].append(data)
         self._text(data)

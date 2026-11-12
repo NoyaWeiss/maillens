@@ -213,3 +213,73 @@ def test_f19_stays_narrow():
     sec = "<p>Are you available? Quick favor, keep this between us.</p>"
     assert run("Tal <tal@corp.example>", relationship=known, html=sec).verdict == "LOW"            # known sender
     assert run("X <x@unknown.example>", html=sec).verdict == "LOW"                                 # familiarity unknown
+
+
+# ------------------------------------------------------------------ Phase 5b generalizable fixes (new dev examples)
+def test_combosquatting_known_vendor_and_brand():
+    rl = {**REL, "known_domains": ["harbourfreight.example", "lumenworks.example"]}
+    assert sig(run("Billing <ap@harbourfreight-billing.example>", relationship=rl), "S5") == 2
+    assert sig(run("Accounts <x@secure-lumenworks.example>", relationship=rl), "S5") == 2
+    assert sig(run("PayPal <x@paypal-verify.example>", relationship=rl), "S5") == 2
+    assert sig(run("Lumen <x@lumenworks-group.example>", relationship=rl), "S5") == 0          # rebrand word: neutral
+    assert sig(run("Lumen EU <x@lumenworks-eu.example>", relationship=rl), "S5") == 0          # region: neutral
+    assert sig(run("Lumen <x@lumenworks.example>", relationship=rl), "S5") == 0                # the real domain
+
+
+def test_brand_must_lead_display_name():
+    assert sig(run("Zoom <no-reply@zoom-meetings-portal.example>"), "S3") == 2
+    assert sig(run("Wells Fargo Online <alerts@wf-notices.example>"), "S3") == 2
+    assert sig(run("Harbor Team Zoom Webinars <events@harborteam.example>"), "S3") == 0      # brand mentioned, not claimed
+    assert sig(run("Chase Miller <chase@miller-design.example>"), "S3") == 0                  # first name, not a brand
+
+
+def test_macro_and_protected_archive_strong_only_when_unfamiliar():
+    macro = [{"name": "PO_771.docm", "content_type": "application/vnd.ms-word.document.macroEnabled.12", "size": 9}]
+    assert sig(run(attachments=macro, relationship={**REL, "known_domains": []}), "S11") == 2
+    assert sig(run(attachments=macro, relationship={**REL, "sender_sent_count": 4}), "S11") == 1
+    zipf = [{"name": "files.zip", "content_type": "application/zip", "size": 9}]
+    assert sig(run(attachments=zipf, html="<p>The password is 2468.</p>", relationship={**REL, "known_domains": []}), "S11") == 2
+    assert sig(run(attachments=zipf, html="<p>Archive attached.</p>", relationship={**REL, "known_domains": []}), "S11") == 0
+
+
+def test_bulk_headers_cannot_launder_brand_link_deception():
+    link = '<a href="https://acct-check-portal.example/s">www.paypal.com/security</a>'
+    assert sig(run("Notice <n@acct-check-portal.example>", html=link, bulk=True), "S9") == 2
+    plain = '<a href="https://click.esp-tracker.example/x">www.ourshop.example/sale</a>'
+    assert sig(run("Shop <news@ourshop.example>", html=plain, bulk=True), "S9") <= 1          # ordinary newsletter
+
+
+def test_forwarded_report_from_trusted_colleague_is_reported_content():
+    known = {**REL, "sender_sent_count": 9}
+    fwd = ('<p>Is this legit? Looks off to me.</p><p>---------- Forwarded message ----------</p>'
+           '<p>Your account will be suspended. Please sign in to verify your account.</p>'
+           '<p><a href="https://acct-verify-now.example/x">https://www.paypal.com/login</a></p>')
+    r = run("Noa <noa@corp.example>", subject="Fwd: is this real?", html=fwd, relationship=known)
+    assert r.verdict == "LOW", (r.verdict, r.vector)
+    # Not trusted: unknown forwarder, or the forwarder's OWN text makes the request.
+    assert run("Noa <noa@other-corp.example>", subject="Fwd: is this real?", html=fwd,
+               relationship=REL | {"known_domains": []}).verdict in {"SUSPICIOUS", "HIGH"}
+    own = fwd.replace("Is this legit? Looks off to me.", "Please sign in to verify your account using the link below.")
+    assert run("Noa <noa@corp.example>", subject="Fwd: x", html=own, relationship=known).request.level == 2
+
+
+def test_sign_in_link_to_unrelated_domain_is_suspicious_but_own_domain_is_not():
+    rl = {**REL, "sender_sent_count": 5}
+    off = '<p>You will need to sign in with your email account to view it.</p><p><a href="https://doc-view-portal.example/d/1">View</a></p>'
+    assert run("Dana <dana@northwind.example>", html=off, relationship=rl).gate == "S-L"
+    own = '<p>Please sign in and review your account activity.</p><p><a href="https://northwind.example/security">Review</a></p>'
+    assert run("Security <no-reply@northwind.example>", html=own, relationship=rl).verdict == "LOW"
+    nolink = "<p>Please sign in to verify your account.</p>"
+    assert run("X <x@y.example>", html=nolink).verdict == "LOW"     # request alone still never escalates
+
+
+def test_request_phrasing_and_two_sentence_bank_change():
+    lvl = lambda h: (run(html=h).request or type("n", (), {"level": 0})).level
+    assert lvl("<p>Please update the beneficiary on file before paying the invoice.</p>") == 3
+    assert lvl("<p>Our old account is closed. Please send it to the new one from now on.</p>") == 3
+    assert lvl("<p>Please w i r e the payment to our new account today.</p>") == 3          # one spaced word
+    # Known limitation: several adjacent spaced-out words collapse into one token and are still missed.
+    assert lvl("<p>Please w i r e the payment to our n e w a c c o u n t today.</p>") == 0
+    assert lvl("<p>We moved to a new bank. Please call your account manager to confirm before updating records.</p>") < 3
+    assert lvl("<p>Please update your account details in the profile page.</p>") < 3
+    assert lvl("<p>Scammers say the account is closed. They then ask you to send it to a new one.</p>") < 3

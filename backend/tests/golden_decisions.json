@@ -397,13 +397,6 @@
     "OBSERVED"
    ],
    [
-    "S3",
-    "IDENTITY",
-    "domain:northwindbank-alerts.example",
-    2,
-    "OBSERVED"
-   ],
-   [
     "S9",
     "DEST",
     "domain:northwind-verify.example",
@@ -414,8 +407,8 @@
   "gate": "H-A",
   "pathway": "Deception",
   "request_level": 2,
-  "score": 84,
-  "vector": "D3 \u00b7 A2 \u00b7 E3 \u00b7 P1 \u00b7 N1",
+  "score": 79,
+  "vector": "D3 \u00b7 A2 \u00b7 E2 \u00b7 P1 \u00b7 N1",
   "verdict": "HIGH"
  },
  "t9": {

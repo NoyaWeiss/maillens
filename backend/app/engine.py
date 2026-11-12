@@ -8,7 +8,7 @@ from .schemas import (ActionOut, AnalyzeRequest, AnalyzeResponse, Basis, CheckOu
                       FindingOut, Group, ReasonOut, RequestOut)
 from .signals import auth as s1
 from .signals.ask import s13_s14
-from .signals.dest import s9_link_deception, s10_url_construction
+from .signals.dest import offsite_links, s9_link_deception, s10_url_construction
 from .signals.identity import s2_reply_to, s3_display_name, s4_name_collision, s5_lookalike, s7_thread, sender_entity
 from .signals.payload import s11_attachments, s12_obfuscation
 
@@ -80,7 +80,8 @@ def analyze(req: AnalyzeRequest, request_id: str) -> tuple[AnalyzeResponse, Deci
         notes.append(ask.note)
 
     d = decide(findings, ask.level, ask.pressure, ctx.familiarity, auth_available=states["S1"] is CheckState.RAN,
-               pretext_secrecy=ask.pretext_secrecy)
+               pretext_secrecy=ask.pretext_secrecy,
+               credential_offsite=bool(ask.pattern and ask.pattern.id == "credentials" and offsite_links(ctx)))
     arch = archetype(d, ask)
 
     ran = sum(1 for s in states.values() if s is CheckState.RAN)

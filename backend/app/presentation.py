@@ -52,6 +52,8 @@ _FINDING_TEXT = {
                                "It uses the name of someone you email, from a different address."),
     "lookalike_mixed_script": ("Look-alike domain",
                                "The sender's domain mixes alphabets to imitate a familiar name."),
+    "combosquat_domain": ("Imitation domain",
+                          "The sender's domain adds a word like 'billing' or 'secure' to a name you know."),
     "lookalike_domain": ("Look-alike domain",
                          "The sender's domain imitates one you know."),
     "thread_fake_reply": ("Looks like a reply, isn't one",
@@ -251,6 +253,7 @@ _DECISION = {
     "H-C": "The email asks for something hard to undo, and other signals support the concern. That makes it High risk.",
     "S-D": "One strong warning sign was found, but nothing else confirms it. That makes it Suspicious.",
     "S-A": "The email asks for something hard to undo. Nothing else looks wrong, but the request alone deserves verification.",
+    "S-L": "The email asks you to sign in, and its link goes to a site unrelated to the sender or anyone you correspond with.",
     "S-P": "An unfamiliar sender asks for an unexplained favor and asks you to keep it secret. That combination is a common opening for fraud.",
     "INC": "The sender couldn't be verified, and the email contains a risky request or an anomaly. "
            "Rating it Low would be misleading, so the result is Inconclusive.",

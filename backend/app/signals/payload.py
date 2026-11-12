@@ -46,13 +46,16 @@ def s11_attachments(ctx: Context) -> SignalResult:
                 reality=f"A .{last} file opens as a web page and can host a fake sign-in form", excerpt=a.name))
             if not risky:
                 r.notes.append("S11 HTML attachment kept at level 1: known, authenticated sender")
-        elif last in MACRO_OFFICE:
-            r.findings.append(Finding.of("attach_macro", "S11", Group.PAYLOAD, ent, 1, Basis.OBSERVED, claim="An Office document",
-                                      reality=f"A macro-enabled .{last} file", excerpt=a.name))
-        elif last in ARCHIVE and re.search(r"\bpassword\b", body):
-            r.findings.append(Finding.of("attach_protected_archive", "S11", Group.PAYLOAD, ent, 1, Basis.OBSERVED, claim="An archive",
-                                      reality="Password-protected archives hide their contents from scanners",
-                                      excerpt=a.name))
+        elif last in MACRO_OFFICE or (last in ARCHIVE and re.search(r"\bpassword\b", body)):
+            # Same rule as HTML attachments: strong from an unfamiliar or unauthenticated sender (Phase 5b),
+            # weak from a known, authenticated one (colleagues' macro workbooks are common).
+            risky = ctx.familiarity == "1" or not ctx.auth.passed
+            macro = last in MACRO_OFFICE
+            r.findings.append(Finding.of("attach_macro" if macro else "attach_protected_archive",
+                "S11", Group.PAYLOAD, ent, 2 if risky else 1, Basis.OBSERVED,
+                claim="An Office document" if macro else "An archive",
+                reality=f"A macro-enabled .{last} file" if macro else "Password-protected archives hide their contents from scanners",
+                excerpt=a.name))
     return r
 
 

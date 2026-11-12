@@ -30,12 +30,16 @@ ESP_TRACKERS = frozenset({
     "rs6.net", "exacttarget.com", "salesforce.com", "klaviyo.com", "customer.io", "substack.com",
 })
 
-# Small, deliberately conservative brand list: display-name token -> domains the brand owns.
-# The two .example brands exist only so the synthetic demo mailbox can exercise the check.
+# Commonly impersonated brands: display-name token -> domains the brand owns. Brand names that are also
+# common first names (e.g. "Chase") are deliberately left out. No demo/fixture brands here (Phase 5:
+# demo-only entries caused false positives on unrelated senders with the same name).
 BRANDS: dict[str, frozenset[str]] = {
     "paypal": frozenset({"paypal.com"}),
-    "microsoft": frozenset({"microsoft.com", "office.com", "live.com", "outlook.com", "microsoftonline.com"}),
+    "microsoft": frozenset({"microsoft.com", "office.com", "live.com", "outlook.com", "microsoftonline.com",
+                            "sharepoint.com", "onedrive.com", "onmicrosoft.com"}),
     "office 365": frozenset({"microsoft.com", "office.com", "office365.com"}),
+    "sharepoint": frozenset({"microsoft.com", "sharepoint.com"}),
+    "onedrive": frozenset({"microsoft.com", "onedrive.com", "live.com"}),
     "google": frozenset({"google.com", "gmail.com", "youtube.com"}),
     "apple": frozenset({"apple.com", "icloud.com"}),
     "amazon": frozenset({"amazon.com", "amazon.co.uk", "amazon.de", "amazonses.com"}),
@@ -44,10 +48,28 @@ BRANDS: dict[str, frozenset[str]] = {
     "netflix": frozenset({"netflix.com"}),
     "dhl": frozenset({"dhl.com", "dhl.de"}),
     "fedex": frozenset({"fedex.com"}),
+    "ups": frozenset({"ups.com"}),
+    "usps": frozenset({"usps.com"}),
     "linkedin": frozenset({"linkedin.com"}),
     "facebook": frozenset({"facebook.com", "facebookmail.com", "meta.com"}),
-    "northwind bank": frozenset({"northwindbank.example"}),
-    "cloudmail": frozenset({"cloudmail.example"}),
+    "instagram": frozenset({"instagram.com"}),
+    "whatsapp": frozenset({"whatsapp.com"}),
+    "zoom": frozenset({"zoom.us", "zoom.com"}),
+    "slack": frozenset({"slack.com"}),
+    "adobe": frozenset({"adobe.com", "adobesign.com", "echosign.com"}),
+    "salesforce": frozenset({"salesforce.com"}),
+    "okta": frozenset({"okta.com"}),
+    "atlassian": frozenset({"atlassian.com", "atlassian.net"}),
+    "github": frozenset({"github.com"}),
+    "intuit": frozenset({"intuit.com"}),
+    "quickbooks": frozenset({"intuit.com", "quickbooks.com"}),
+    "wells fargo": frozenset({"wellsfargo.com"}),
+    "bank of america": frozenset({"bankofamerica.com"}),
+    "citibank": frozenset({"citi.com", "citibank.com"}),
+    "hsbc": frozenset({"hsbc.com"}),
+    "coinbase": frozenset({"coinbase.com"}),
+    "stripe": frozenset({"stripe.com"}),
+    "shopify": frozenset({"shopify.com"}),
 }
 
 # Common visual confusables mapped to a Latin skeleton. Deliberately excludes i<->l,
