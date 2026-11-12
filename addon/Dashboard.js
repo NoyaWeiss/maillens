@@ -38,7 +38,8 @@ function onOpenDashboard(e) {
     var resp = UrlFetchApp.fetch(settings.url + '/v1/dashboard/launch', {
       method: 'post', contentType: 'application/json', muteHttpExceptions: true, followRedirects: false,
       headers: { 'X-API-Key': settings.apiKey },
-      payload: JSON.stringify({ account: accountKey_(), message: messageId || null, label: accountLabel_() })
+      payload: JSON.stringify({ account: accountKey_(), message: messageId || null, label: accountLabel_(),
+        scan_url: (typeof DEV_DEFAULTS !== 'undefined' && DEV_DEFAULTS.scanUrl) || null })
     });
     if (resp.getResponseCode() !== 200) return notify_('The dashboard is unavailable (HTTP ' + resp.getResponseCode() + ').');
     var path = String(JSON.parse(resp.getContentText()).path || '');

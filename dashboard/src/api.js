@@ -46,7 +46,7 @@ export async function redeemLaunchCode() {
   if (!m) return null;
   window.history.replaceState(null, '', window.location.pathname + '#/overview');
   const out = await request('/v1/dashboard/session', { method: 'POST', body: { code: m[1] } });
-  const session = { token: out.token, context: out.context, label: out.account_label || '', expires: Date.now() + out.expires_in * 1000 };
+  const session = { token: out.token, context: out.context, label: out.account_label || '', scan: !!out.scan_available, expires: Date.now() + out.expires_in * 1000 };
   try { store()?.setItem(KEY, JSON.stringify(session)); } catch { /* memory only */ }
   return session;
 }
@@ -56,4 +56,6 @@ export const api = {
   email: (id) => request(`/v1/dashboard/emails/${encodeURIComponent(id)}`, { auth: true }),
   clearHistory: () => request('/v1/dashboard/history', { method: 'DELETE', auth: true }),
   evaluation: () => request('/v1/dashboard/evaluation'),
+  startScan: (range) => request('/v1/dashboard/scan', { method: 'POST', body: { range }, auth: true }),
+  scanStatus: (ticket) => request(`/v1/dashboard/scan/${encodeURIComponent(ticket)}`, { auth: true }),
 };

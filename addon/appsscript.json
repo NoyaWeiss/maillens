@@ -44,5 +44,9 @@
   },
   "urlFetchWhitelist": [
     "https://gmail.googleapis.com/"
-  ]
+  ],
+  "webapp": {
+    "executeAs": "USER_ACCESSING",
+    "access": "MYSELF"
+  }
 }

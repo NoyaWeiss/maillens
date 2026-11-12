@@ -1,84 +1,86 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import ActivityChart, { RANGES } from './ActivityChart.jsx';
-import { Panel, RiskIndex, SectionHeader, Segmented, State, VerdictBadge, splitSender, timeAgo } from './ui.jsx';
+import EmailAssessment from './Investigation.jsx';
+import { api } from './api.js';
+import { Panel, SectionHeader, Segmented, State, VERDICTS, VERDICT_ORDER, VerdictBadge, fmtDate, splitSender } from './ui.jsx';
 
 const RANGE_OPTIONS = Object.keys(RANGES).map((k) => ({ value: k, label: k }));
 
-export default function Overview({ source, onInvestigate, onClear, onDemo }) {
+export default function Overview({ source, selected, onSelect, onBack, onClear, onDemo, onRefresh }) {
   const [range, setRange] = useState('7D');
-  const { emails = [], context, now, mode } = source;
-  const inRange = useMemo(() => emails.filter((e) => e.analyzed_at >= now - RANGES[range].seconds), [emails, range, now]);
+  const [query, setQuery] = useState('');
+  const [verdict, setVerdict] = useState('ALL');
+  const { emails = [], now, mode } = source;
+
+  const inRange = useMemo(() => emails.filter((e) => e.received_at >= now - RANGES[range].seconds), [emails, range, now]);
+  const list = useMemo(() => inRange.filter((e) => (verdict === 'ALL' || e.verdict === verdict) &&
+    (!query || `${e.subject} ${e.sender}`.toLowerCase().includes(query.trim().toLowerCase()))), [inRange, query, verdict]);
   const count = (v) => inRange.filter((e) => e.verdict === v).length;
-  const current = context ? emails.find((e) => e.id === context) : null;
+
+  if (selected && mode !== 'none') return <EmailAssessment id={selected} source={source} onBack={onBack} />;
 
   return (
     <>
-      <SectionHeader title="Account Security Activity" subtitle="Your analyzed emails, risk activity, and recent findings." />
+      <SectionHeader title="Overview" subtitle="Monitor your email security, search messages, and understand potential threats.">
+        {mode !== 'none' ? <Segmented label="Time range" options={RANGE_OPTIONS} value={range} onChange={setRange} /> : null}
+      </SectionHeader>
 
       {mode === 'none' ? (
         <Panel>
-          <State title="Open the dashboard from Gmail to see your account" action={
-            <button type="button" className="btn btn-secondary" onClick={onDemo}>Explore Demo Mode</button>}>
-            In Gmail, open MailLens and choose <b>View full dashboard</b>. The add-on creates a one-time, private link for your
-            account. Detection Performance and How MailLens Works are available without signing in.
+          <State title="Open the dashboard from Gmail" action={<button type="button" className="btn btn-secondary" onClick={onDemo}>Explore Demo Mode</button>}>
+            In MailLens, choose <b>View full dashboard</b> to see your account. Detection Performance and How MailLens Works are available now.
           </State>
         </Panel>
-      ) : null}
-
-      {current ? (
-        <Panel className="context-panel" title="Current email" subtitle="The email you opened the dashboard from.">
-          <div className="context-row">
-            <div className="context-main">
-              <p className="context-subject">{current.subject}</p>
-              <p className="muted small">{splitSender(current.sender).name} · <span className="mono">{splitSender(current.sender).address}</span></p>
-              <p className="context-headline">{current.headline}</p>
-            </div>
-            <div className="context-side">
-              <VerdictBadge verdict={current.verdict} size="lg" />
-              <RiskIndex score={current.score} verdict={current.verdict} />
-              <button type="button" className="btn btn-primary" onClick={() => onInvestigate(current.id)}>Open investigation</button>
-            </div>
-          </div>
-        </Panel>
-      ) : null}
-
-      {mode !== 'none' ? (
+      ) : (
         <>
-          <div className="toolbar">
-            <p className="muted small">Showing the {RANGES[range].label} · records are kept for 30 days</p>
-            <Segmented label="Time range" options={RANGE_OPTIONS} value={range} onChange={setRange} />
-          </div>
           <div className="stats">
             <Stat label="Analyzed emails" value={inRange.length} />
             <Stat label="High risk" value={count('HIGH')} tone="high" />
             <Stat label="Suspicious" value={count('SUSPICIOUS')} tone="susp" />
             <Stat label="Inconclusive" value={count('INCONCLUSIVE')} tone="inc" />
           </div>
-          <Panel title="Risk activity" subtitle="Emails analyzed over time, colored by verdict (by the time each was last analyzed).">
+
+          <Panel title="Risk activity" aside={<ScanInbox mode={mode} available={source.scan} range={range} onFinished={onRefresh} />}>
             {emails.length ? <ActivityChart emails={emails} range={range} now={now} />
-              : <State title="No analyzed emails yet">Open an email in Gmail with MailLens. Each analysis appears here.</State>}
+              : <State title="No analyzed emails yet">Open an email with MailLens in Gmail, or scan your inbox.</State>}
           </Panel>
-          {emails.length ? <Panel title="Recent analyzed emails" subtitle="Select an email to see why it received its verdict."
-            aside={mode === 'account' && emails.length ? <ClearHistory onClear={onClear} /> : null}>
-            {inRange.length ? (
-              <ul className="email-list">
-                {inRange.slice(0, 8).map((e) => (
-                  <li key={e.id}>
-                    <button type="button" className="email-row" onClick={() => onInvestigate(e.id)}>
-                      <VerdictBadge verdict={e.verdict} size="sm" />
-                      <span className="email-text">
-                        <span className="email-subject">{e.subject}</span>
-                        <span className="muted small">{splitSender(e.sender).name}{e.category ? ` · ${e.category}` : ''}</span>
-                      </span>
-                      <span className="muted small nowrap">{timeAgo(e.analyzed_at, now)}</span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            ) : <State title="Nothing analyzed in this period">Choose a longer time range above.</State>}
-          </Panel> : null}
+
+          {emails.length ? (
+            <Panel title="Emails" aside={mode === 'account' ? <ClearHistory onClear={onClear} /> : null}>
+              <div className="filters">
+                <input type="search" className="input" placeholder="Search sender or subject" value={query}
+                  onChange={(e) => setQuery(e.target.value)} aria-label="Search sender or subject" />
+                <div className="chips" role="group" aria-label="Filter by risk level">
+                  {['ALL', ...VERDICT_ORDER].map((v) => (
+                    <button key={v} type="button" aria-pressed={verdict === v} className={`chip ${verdict === v ? 'active' : ''}`}
+                      onClick={() => setVerdict(v)}>{v === 'ALL' ? 'All' : VERDICTS[v].label}</button>
+                  ))}
+                </div>
+              </div>
+              {list.length ? (
+                <ul className="email-list">
+                  {list.map((e) => {
+                    const s = splitSender(e.sender);
+                    return (
+                      <li key={e.id}>
+                        <button type="button" className={`email-row ${e.id === source.context ? 'is-context' : ''}`} onClick={() => onSelect(e.id)}>
+                          <VerdictBadge verdict={e.verdict} />
+                          <span className="email-text">
+                            <span className="email-subject">{e.subject}</span>
+                            <span className="email-sender">{s.name}</span>
+                          </span>
+                          <span className="email-date">{e.id === source.context ? <span className="from-gmail">Opened in Gmail</span> : null}{fmtDate(e.received_at)}</span>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              ) : <p className="muted pad">No emails match{inRange.length < emails.length ? ` in the ${RANGES[range].label}` : ''}.</p>}
+              <p className="footnote">{mode === 'demo' ? 'Synthetic demo emails.' : 'Only emails MailLens has analyzed are listed. Records are kept for 30 days.'}</p>
+            </Panel>
+          ) : null}
         </>
-      ) : null}
+      )}
     </>
   );
 }
@@ -92,14 +94,70 @@ function Stat({ label, value, tone }) {
   );
 }
 
+/** Opens the user's own Apps Script scan page (existing Gmail permission) and tracks its progress. */
+function ScanInbox({ mode, available, range, onFinished }) {
+  const [scan, setScan] = useState({ status: 'idle' });
+  const timer = useRef(null);
+  useEffect(() => () => clearTimeout(timer.current), []);
+
+  if (mode !== 'account') return null;
+  if (!available) return <span className="muted small" title="Run scripts/push-addon.sh to enable the scan page.">Inbox scan isn't set up</span>;
+
+  const poll = (ticket, started) => {
+    timer.current = setTimeout(async () => {
+      try {
+        const p = await api.scanStatus(ticket);
+        const waited = Date.now() - started;
+        if (p.state === 'done') { setScan({ status: 'done', p }); onFinished(); return; }
+        if (p.state === 'error') { setScan({ status: 'error', message: p.error || 'The scan stopped.' }); return; }
+        if (waited > 15 * 60 * 1000) { setScan({ status: 'error', message: 'The scan timed out.' }); return; }
+        setScan({ status: p.state === 'running' ? 'running' : 'waiting', p, slow: p.state === 'waiting' && waited > 60000 });
+        poll(ticket, started);
+      } catch (e) { setScan({ status: 'error', message: e.message }); }
+    }, 2000);
+  };
+
+  const start = async () => {
+    const tab = window.open('about:blank', '_blank'); // opened synchronously so the browser doesn't block it
+    setScan({ status: 'starting' });
+    try {
+      const r = await api.startScan(range);
+      if (tab) { tab.opener = null; tab.location.href = r.url; }
+      setScan({ status: 'waiting', url: tab ? null : r.url });
+      poll(r.ticket, Date.now());
+    } catch (e) {
+      if (tab) tab.close();
+      setScan({ status: 'error', message: e.message });
+    }
+  };
+
+  const busy = ['starting', 'waiting', 'running'].includes(scan.status);
+  const p = scan.p || {};
+  const processed = (p.done || 0) + (p.failed || 0) + (p.skipped || 0);
+  return (
+    <div className="scan" aria-live="polite">
+      {scan.status === 'waiting' ? <span className="scan-msg">{scan.url
+        ? <a href={scan.url} target="_blank" rel="noopener noreferrer">Open the scan page</a>
+        : scan.slow ? 'Continue in the Google tab (approve access if asked)' : 'Starting in a new tab…'}</span> : null}
+      {scan.status === 'running' ? (
+        <span className="scan-msg"><span className="scan-bar"><span style={{ width: `${p.total ? (100 * processed) / p.total : 5}%` }} /></span>{processed}/{p.total}</span>
+      ) : null}
+      {scan.status === 'done' ? <span className="scan-msg ok">Scanned {p.total}: {p.done} new{p.skipped ? `, ${p.skipped} already analyzed` : ''}{p.failed ? `, ${p.failed} failed` : ''}</span> : null}
+      {scan.status === 'error' ? <span className="scan-msg err" role="alert">{scan.message}</span> : null}
+      <button type="button" className="btn btn-primary" onClick={start} disabled={busy}
+        title={`Analyze up to 50 of the newest inbox emails from the ${RANGES[range].label}`}>{busy ? 'Scanning…' : 'Scan inbox'}</button>
+    </div>
+  );
+}
+
 function ClearHistory({ onClear }) {
   const [confirming, setConfirming] = useState(false);
-  if (!confirming) return <button type="button" className="btn btn-ghost small" onClick={() => setConfirming(true)}>Clear history</button>;
+  if (!confirming) return <button type="button" className="btn btn-ghost" onClick={() => setConfirming(true)}>Clear history</button>;
   return (
     <span className="confirm">
-      <span className="small">Delete this account&apos;s history?</span>
-      <button type="button" className="btn btn-danger small" onClick={() => { setConfirming(false); onClear(); }}>Delete</button>
-      <button type="button" className="btn btn-ghost small" onClick={() => setConfirming(false)}>Cancel</button>
+      <span>Delete all records?</span>
+      <button type="button" className="btn btn-danger" onClick={() => { setConfirming(false); onClear(); }}>Delete</button>
+      <button type="button" className="btn btn-ghost" onClick={() => setConfirming(false)}>Cancel</button>
     </span>
   );
 }

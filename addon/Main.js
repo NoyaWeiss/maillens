@@ -19,10 +19,13 @@ function onGmailMessage(e) {
     var message = timer.time('open', function () { return openMessage_(e); });
     step = 'extract message';
     var payload = buildPayload_(message, granted, timer);
+    // Canonical Gmail API id: the same id the inbox scan uses, so one email is one history entry.
+    var historyId = message.getId();
+    var receivedMs = message.getDate().getTime();
     step = 'call backend';
-    var result = timer.time('backend', function () { return callAnalyze_(settings, payload, timer.summary(), messageId); });
+    var result = timer.time('backend', function () { return callAnalyze_(settings, payload, timer.summary(), historyId, receivedMs); });
     step = 'render';
-    var card = timer.time('render', function () { return buildResultCard_(result, messageId, granted); });
+    var card = timer.time('render', function () { return buildResultCard_(result, messageId, granted, historyId); });
     if (isDevBuild_()) rememberForDevTools_(messageId, result.request_id);
     console.log('MailLens timing ' + timer.summary());  // visible in the editor's Executions page
     return card;

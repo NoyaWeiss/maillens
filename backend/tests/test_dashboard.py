@@ -109,3 +109,52 @@ def test_unusable_ids_are_rejected_without_logging_values(caplog):
     assert "bad id" not in caplog.text and "history not recorded" in caplog.text
     r = c.post("/v1/dashboard/launch", json={"account": "e" * 64, "message": "x" * 300}, headers=KEY)
     assert r.status_code == 422
+
+
+SCAN_URL = "https://script.google.com/macros/s/AKfycbx" + "A" * 40 + "/exec"
+
+
+def scan_session(c, account):
+    path = c.post("/v1/dashboard/launch", json={"account": account, "scan_url": SCAN_URL}, headers=KEY).json()["path"]
+    r = c.post("/v1/dashboard/session", json={"code": path.split("=", 1)[1]}).json()
+    assert r["scan_available"] is True
+    return {"Authorization": "Bearer " + r["token"]}
+
+
+def test_scan_ticket_is_bound_to_the_session_account():
+    c = client()
+    acct, other = "s" * 64, "o" * 64
+    h = scan_session(c, acct)
+    r = c.post("/v1/dashboard/scan", json={"range": "24H"}, headers=h).json()
+    assert r["url"].startswith(SCAN_URL + "?t=") and acct not in r["url"]
+    t = r["ticket"]
+    # A different Google account (different private key) can't use this ticket.
+    assert c.post("/v1/scan/start", json={"ticket": t, "account": other}, headers=KEY).status_code == 403
+    assert c.post("/v1/scan/start", json={"ticket": t, "account": acct}).status_code == 401          # API key required
+    assert c.post("/v1/scan/start", json={"ticket": t, "account": acct}, headers=KEY).json()["range_seconds"] == 86400
+    analyze(c, acct, "18c3f2a9b7d41e05", subject="already seen")
+    known = c.post("/v1/scan/known", json={"ticket": t, "account": acct, "ids": ["18c3f2a9b7d41e05", "18c3f2a9b7d41e06"]}, headers=KEY).json()
+    assert known["known"] == ["18c3f2a9b7d41e05"]                                                       # deduplication
+    c.post("/v1/scan/progress", json={"ticket": t, "account": acct, "state": "done", "total": 2, "done": 1, "skipped": 1, "failed": 0}, headers=KEY)
+    assert c.get(f"/v1/dashboard/scan/{t}", headers=h).json()["state"] == "done"
+    assert c.get(f"/v1/dashboard/scan/{t}", headers=scan_session(c, other)).status_code == 404         # other account can't poll
+
+
+def test_scan_requires_setup_and_valid_script_url():
+    c = client()
+    h, _, _ = session(c, "n" * 64)
+    assert c.post("/v1/dashboard/scan", json={"range": "24H"}, headers=h).status_code == 409
+    bad = c.post("/v1/dashboard/launch", json={"account": "n" * 64, "scan_url": "https://evil.example/exec"}, headers=KEY)
+    assert bad.status_code == 422
+
+
+def test_received_time_drives_ordering():
+    c = client()
+    acct = "r" * 64
+    body = make_request("Shop <x@shop.example>", subject="old").model_dump(mode="json")
+    c.post("/v1/analyze", json=body, headers={**KEY, "X-MailLens-Account": acct, "X-MailLens-Message": "oldmsg01",
+                                              "X-MailLens-Received": str(int((__import__("time").time() - 5 * 86400) * 1000))})
+    analyze(c, acct, "newmsg01", subject="new")
+    h, _, _ = session(c, acct)
+    e = c.get("/v1/dashboard/emails", headers=h).json()["emails"]
+    assert [x["subject"] for x in e] == ["new", "old"] and e[1]["received_at"] < e[0]["received_at"] - 4 * 86400

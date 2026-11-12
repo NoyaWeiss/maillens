@@ -5,7 +5,7 @@
 
 var VERDICTS = ['LOW', 'SUSPICIOUS', 'HIGH', 'INCONCLUSIVE'];
 
-function callAnalyze_(settings, payload, timing, messageId) {
+function callAnalyze_(settings, payload, timing, messageId, receivedMs) {
   var resp;
   var account = '';
   try { account = accountKey_(); } catch (e) { /* history is best effort; analysis never depends on it */ }
@@ -15,7 +15,8 @@ function callAnalyze_(settings, payload, timing, messageId) {
     contentType: 'application/json',
     // Account key + message id let the backend keep this account's dashboard history (addon/Dashboard.js).
     headers: { 'X-API-Key': settings.apiKey, 'X-MailLens-Timing': String(timing || '').slice(0, 300),
-      'X-MailLens-Account': account, 'X-MailLens-Message': String(messageId || '') },
+      'X-MailLens-Account': account, 'X-MailLens-Message': String(messageId || ''),
+      'X-MailLens-Received': receivedMs ? String(Math.floor(receivedMs)) : '' },
     payload: JSON.stringify(payload),
       muteHttpExceptions: true,
       followRedirects: false

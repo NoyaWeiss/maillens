@@ -23,7 +23,7 @@ export default function ActivityChart({ emails, range, now }) {
     const start = now - r.seconds;
     const b = Array.from({ length: r.buckets }, (_, i) => ({ start: start + i * size, size, HIGH: 0, SUSPICIOUS: 0, INCONCLUSIVE: 0, LOW: 0, total: 0 }));
     for (const e of emails) {
-      const i = Math.floor((e.analyzed_at - start) / size);
+      const i = Math.floor(((e.received_at ?? e.analyzed_at) - start) / size);
       if (i >= 0 && i < b.length) { b[i][e.verdict] += 1; b[i].total += 1; }
     }
     return { buckets: b, max: Math.max(1, ...b.map((x) => x.total)) };
@@ -31,6 +31,7 @@ export default function ActivityChart({ emails, range, now }) {
 
   const total = buckets.reduce((s, b) => s + b.total, 0);
   const tick = Math.ceil(buckets.length / 6);
+  // Bars count analyzed emails by when they were received.
   return (
     <div className="chart">
       <div className="chart-legend" aria-hidden="true">

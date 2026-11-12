@@ -112,6 +112,13 @@ export function timeAgo(ts, now = Date.now() / 1000) {
   return `${Math.floor(d / 86400)} d ago`;
 }
 
+export function fmtDate(ts) {
+  const d = new Date(ts * 1000);
+  const sameDay = d.toDateString() === new Date().toDateString();
+  return sameDay ? d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
+    : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
 export function fmtTime(ts) {
   return new Date(ts * 1000).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 }

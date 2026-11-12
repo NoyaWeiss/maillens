@@ -55,7 +55,7 @@ function escapeTokens_(s) {
 }
 
 // ------------------------------------------------------------------ main card
-function buildResultCard_(r, messageId, granted) {
+function buildResultCard_(r, messageId, granted, historyId) {
   try { CacheService.getUserCache().put('result_' + r.request_id, JSON.stringify(r), CACHE_TTL); } catch (e) { /* ignore */ }
   var style = VERDICT_STYLE[r.verdict];
   var card = CardService.newCardBuilder();  // no header: Gmail already shows "MailLens" above the card
@@ -63,7 +63,7 @@ function buildResultCard_(r, messageId, granted) {
   // 1. Risk assessment
   // Compact "Full dashboard" link sits in the assessment row's button slot; the approved layout is unchanged.
   card.addSection(block_('Risk assessment', [assessmentWidget_(r, style)
-    .setButton(dashboardButton_('Full dashboard', CardService.TextButtonStyle.BORDERLESS, messageId)),
+    .setButton(dashboardButton_('Full dashboard', CardService.TextButtonStyle.BORDERLESS, historyId || messageId)),
     CardService.newTextParagraph().setText(ltr_(escapeHtml_(r.headline)))]));
 
   // 2. Why ... (not shown for Low)

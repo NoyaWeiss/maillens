@@ -128,6 +128,13 @@ install: `run-backend-docker.sh` builds it into the image.
   result card choose **Full dashboard** (opens with that email selected). It opens in a new tab.
 - **Directly:** `<your tunnel URL>/dashboard/` shows Detection Performance, How MailLens Works and a labelled
   **Demo Mode** (synthetic emails). Your own activity appears only when opened from Gmail.
+- **Tabs:** Overview (activity, search, and each email's assessment), Detection Performance, How MailLens Works.
+- **Scan inbox** (Overview) analyzes up to 50 of the newest inbox emails in the selected time range, skipping
+  ones already analyzed. The dashboard can't read Gmail, so it opens your own Apps Script project as an
+  **owner-only web app** (`/dev` test URL, injected by `push-addon.sh`). That page runs as you with the
+  already-granted `gmail.readonly`, so no new scopes are needed. The first time, Google may ask you to authorize
+  the project once. A short-lived scan ticket ties the scan to the dashboard's account: if the scan tab is
+  signed in to a different Google account, the backend refuses it.
 
 Why it works this way (verified against Google's documentation):
 - Gmail can open links only to **HTTPS** prefixes allow-listed in the manifest (`openLinkUrlPrefixes`), so a
@@ -225,8 +232,8 @@ node addon/tests/contract.mjs http://127.0.0.1:8787 "$(grep MAILLENS_API_KEY bac
 
 | Suite | Count | What it covers |
 |---|---|---|
-| Backend | 249 tests | per-signal must-fire / must-not-fire; engine invariants (exhaustive grid); the demo scenarios; adversarial input; grounding of explanations; a decision snapshot proving presentation changes never alter verdicts |
-| Add-on | 74 tests | every card rendered for real backend responses through a strict CardService double (Gmail's render-time rules), hostile-string escaping, failure paths |
+| Backend | 254 tests | per-signal must-fire / must-not-fire; engine invariants (exhaustive grid); the demo scenarios; adversarial input; grounding of explanations; a decision snapshot proving presentation changes never alter verdicts |
+| Add-on | 76 tests | every card rendered for real backend responses through a strict CardService double (Gmail's render-time rules), hostile-string escaping, failure paths |
 | Development cases | 41 pre-registered, labelled (`backend/tests/phase3/`) | Ground truth committed before the first run. Baseline: 11/20 malicious detected, 3 false positives. Now: 18/20 detected, 0 false positives. **Development tests, not a benchmark;** see `docs/TESTING_PLAN.md` |
 
 ## 7. Troubleshooting

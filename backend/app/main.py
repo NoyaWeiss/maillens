@@ -17,7 +17,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from . import engine, evaluation
-from .history import History
+from .history import SCAN_LIMIT, History
 from .config import Settings, load_settings
 from .schemas import AnalyzeRequest, AnalyzeResponse
 from .security import BodySizeLimit, RateLimiter, check_api_key
@@ -27,6 +27,7 @@ DEV = os.environ.get("MAILLENS_DEV_PROBE") == "1"
 # Synthetic demo-mailbox Message-IDs only (see demo/build_seed.py); real mail never matches.
 _DEMO_ID = re.compile(r"^<([a-z0-9]{1,8})\.maillens-demo@mail\.example>$")
 _ACCOUNT_KEY = re.compile(r"^[A-Za-z0-9_-]{32,128}$")
+_SCAN_URL = r"^https://script\.google\.com/macros/s/[A-Za-z0-9_-]{20,120}/(exec|dev)$"
 # Gmail's add-on message id is opaque (it is not always the 16-hex Gmail API id; it can carry a prefix
 # such as "msg-f:"). It is only ever HMAC'd, never parsed or displayed, so accept any printable token.
 _GMAIL_ID = re.compile(r"^[!-~]{1,200}$")
@@ -61,6 +62,32 @@ class LaunchRequest(BaseModel):
     account: str = Field(pattern=_ACCOUNT_KEY.pattern)
     message: str | None = Field(default=None, pattern=_GMAIL_ID.pattern)
     label: str = Field(default="", max_length=80)
+    scan_url: str | None = Field(default=None, pattern=_SCAN_URL)
+
+
+RANGES = {"1H": 3600, "24H": 86400, "7D": 7 * 86400, "30D": 30 * 86400}
+
+
+class ScanRequest(BaseModel):
+    range: str = Field(pattern="^(1H|24H|7D|30D)$")
+
+
+class ScanAuth(BaseModel):
+    ticket: str = Field(min_length=20, max_length=64)
+    account: str = Field(pattern=_ACCOUNT_KEY.pattern)
+
+
+class ScanKnown(ScanAuth):
+    ids: list[str] = Field(max_length=SCAN_LIMIT)
+
+
+class ScanProgress(ScanAuth):
+    state: str = Field(pattern="^(running|done|error)$")
+    total: int = Field(ge=0, le=SCAN_LIMIT)
+    done: int = Field(ge=0, le=SCAN_LIMIT)
+    skipped: int = Field(ge=0, le=SCAN_LIMIT)
+    failed: int = Field(ge=0, le=SCAN_LIMIT)
+    error: str = Field(default="", max_length=200)
 
 
 class SessionRequest(BaseModel):
@@ -90,7 +117,7 @@ def create_app() -> FastAPI:
                 response.headers.setdefault(k, v)
         return response
 
-    def require_session(request: Request, authorization: str | None = Header(default=None)) -> tuple[str, str | None, str]:
+    def require_session(request: Request, authorization: str | None = Header(default=None)) -> tuple[str, str | None, str, str]:
         limiter.check(request)
         token = (authorization or "").removeprefix("Bearer ").strip()
         s = history.session(token)
@@ -128,7 +155,8 @@ def create_app() -> FastAPI:
     @app.post("/v1/analyze", response_model=AnalyzeResponse, dependencies=[Depends(require_key)])
     def analyze(req: AnalyzeRequest, x_maillens_timing: str | None = Header(default=None),
                 x_maillens_account: str | None = Header(default=None),
-                x_maillens_message: str | None = Header(default=None)) -> AnalyzeResponse:
+                x_maillens_message: str | None = Header(default=None),
+                x_maillens_received: str | None = Header(default=None)) -> AnalyzeResponse:
         request_id = uuid.uuid4().hex[:12]
         resp, decision = engine.analyze(req, request_id)
         # Account history (dashboard): only when the add-on sends a well-formed account key and message id.
@@ -136,7 +164,8 @@ def create_app() -> FastAPI:
         msg_ok = bool(x_maillens_message and _GMAIL_ID.match(x_maillens_message))
         if acct_ok and msg_ok:
             history.record(x_maillens_account, x_maillens_message, req.message.subject or "(no subject)",
-                           req.message.from_header or "", resp.model_dump(mode="json"))
+                           req.message.from_header or "", resp.model_dump(mode="json"),
+                           received=int(x_maillens_received) / 1000 if (x_maillens_received or "").isdigit() else None)
         elif x_maillens_account or x_maillens_message:  # sent but unusable: log shapes only, never values
             log.warning("history not recorded account=%s message=%s", "ok" if acct_ok else _shape(x_maillens_account or "") or "missing",
                         "ok" if msg_ok else _shape(x_maillens_message or "") or "missing")
@@ -156,7 +185,7 @@ def create_app() -> FastAPI:
     def dashboard_launch(body: LaunchRequest) -> dict[str, str]:
         # Called by the add-on at click time. The code goes in the URL fragment (never sent to servers or
         # logged), expires in 2 minutes and works once. No token, key or email content is in the URL.
-        code = history.mint_code(body.account, body.message, body.label)
+        code = history.mint_code(body.account, body.message, body.label, body.scan_url or "")
         return {"path": f"/dashboard/#launch={code}"}
 
     @app.post("/v1/dashboard/session")
@@ -170,8 +199,8 @@ def create_app() -> FastAPI:
 
     @app.get("/v1/dashboard/emails")
     def dashboard_emails(s=Depends(require_session)) -> dict:
-        acct, context, label = s
-        return {"emails": history.list(acct), "context": context, "account_label": label,
+        acct, context, label, _ = s
+        return {"emails": history.list(acct), "context": context, "account_label": label, "scan_available": bool(s[3]),
                 "retention_days": 30, "now": time.time()}
 
     @app.get("/v1/dashboard/emails/{ref}")
@@ -180,6 +209,48 @@ def create_app() -> FastAPI:
         if not item:  # same answer for "not yours" and "doesn't exist"
             raise HTTPException(status.HTTP_404_NOT_FOUND, "not found")
         return item
+
+    # ---- Inbox scan. The dashboard can't read Gmail; the user's own Apps Script web app does (existing
+    # gmail.readonly scope, runs as the signed-in user). The ticket ties the scan to this session's account:
+    # the web app must present the private account key that hashes to the same account.
+    @app.post("/v1/dashboard/scan")
+    def dashboard_scan(body: ScanRequest, s=Depends(require_session)) -> dict:
+        acct, _, _, scan_url = s
+        if not scan_url:
+            raise HTTPException(status.HTTP_409_CONFLICT, "inbox scanning is not set up for this add-on")
+        ticket = history.mint_ticket(acct, RANGES[body.range])
+        return {"ticket": ticket, "url": f"{scan_url}?t={ticket}", "limit": SCAN_LIMIT}
+
+    @app.get("/v1/dashboard/scan/{ticket}")
+    def dashboard_scan_status(ticket: str, s=Depends(require_session)) -> dict:
+        p = history.progress(ticket, s[0])
+        if p is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "not found")
+        return p
+
+    def _scan_ticket(body: ScanAuth) -> tuple[str, int]:
+        t = history.ticket_for(body.ticket, body.account)
+        if not t:
+            raise HTTPException(status.HTTP_403_FORBIDDEN, "scan ticket expired or belongs to a different Google account")
+        return t
+
+    @app.post("/v1/scan/start", dependencies=[Depends(require_key)])
+    def scan_start(body: ScanAuth) -> dict:
+        _, range_s = _scan_ticket(body)
+        history.update_progress(body.ticket, state="running")
+        return {"range_seconds": range_s, "limit": SCAN_LIMIT}
+
+    @app.post("/v1/scan/known", dependencies=[Depends(require_key)])
+    def scan_known(body: ScanKnown) -> dict:
+        acct, _ = _scan_ticket(body)
+        return {"known": history.known_refs(acct, [i for i in body.ids if _GMAIL_ID.match(i)])}
+
+    @app.post("/v1/scan/progress", dependencies=[Depends(require_key)])
+    def scan_progress(body: ScanProgress) -> dict:
+        _scan_ticket(body)
+        history.update_progress(body.ticket, state=body.state, total=body.total, done=body.done,
+                                skipped=body.skipped, failed=body.failed, error=body.error)
+        return {"status": "ok"}
 
     @app.delete("/v1/dashboard/history")
     def dashboard_clear(s=Depends(require_session)) -> dict[str, int]:
