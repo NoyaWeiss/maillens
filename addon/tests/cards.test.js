@@ -263,19 +263,19 @@ test('regression: a stale URL saved in user settings never overrides the deploym
   assert.strictEqual(s.managed, true);
 });
 
-test('View full dashboard: below View detailed analysis on the result card, top of Home; FILLED navy, same wording', () => {
+test('View full dashboard: next to the verdict on the result card, top of Home; FILLED navy, same wording', () => {
   const { CardService, built } = strictCardService();
   const ctx = load(CardService, false, { props: { backendUrl: 'https://b.example', apiKey: 'k' } });
   ctx.buildResultCard_(responses.t5, 'msg123', ['gmail.readonly'], 'canonical123');
   const card = built[0];
-  const last = card.sections[card.sections.length - 1];
-  assert.strictEqual(plain(last.widgets[0].buttons[0].text).replace(/[⁦⁩]/g, ''), 'View detailed analysis');
-  const btn = last.widgets[1].buttons[0];  // directly below View detailed analysis
+  const assessment = card.sections[0].widgets[1];  // the verdict row
+  const btn = assessment.button;                     // next to the verdict
   assert.strictEqual(plain(btn.text).replace(/[⁦⁩]/g, ''), 'View full dashboard');
   assert.deepStrictEqual([btn.style, btn.bg], ['FILLED', '#1b2a4a']);
   assert.strictEqual(JSON.stringify([btn.action.fn, btn.action.params]), JSON.stringify(['onOpenDashboard', { messageId: 'canonical123' }]));
   assert.strictEqual(plain(firstText(card.sections[0])).replace(/[⁦⁩]/g, ''), 'Risk assessment');
-  assert.ok(!Object.keys(card.sections[0].widgets[1]).includes('button'), 'assessment row itself unchanged');
+  const last = card.sections[card.sections.length - 1];
+  assert.strictEqual(last.widgets.length, 1, 'only View detailed analysis at the bottom');
   const ctx2 = load(CardService, false, { props: { backendUrl: 'https://b.example', apiKey: 'k' } });
   ctx2.serviceStatus_ = () => 'ready';
   const home = ctx2.buildWelcomeCard_();
