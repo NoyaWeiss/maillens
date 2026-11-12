@@ -101,8 +101,9 @@ def test_evidence_values_are_exact():
 def test_safeguards_and_privacy_wording():
     assert any("sending-platform" in s for s in RESP["t1"].safeguards)
     assert any("preview line" in s for s in RESP["t3"].safeguards)
-    assert "when you allow it" in RESP["t1"].limitations_summary
-    assert any("read access to your mailbox" in x for x in RESP["t1"].limitations)
+    readme = (Path(__file__).resolve().parents[2] / "README.md").read_text()   # general limitations moved here
+    assert "when you allow it" in readme and "read access to your mailbox" in readme
+    assert RESP["t1"].limitations == []
     assert {c.id: c.note for c in RESP["t9"].checks}["S1"].startswith("no authentication results")
 
 
@@ -119,3 +120,11 @@ def test_deceptive_link_without_sign_in_request_says_so_precisely():
     from tests.factory import run as frun
     r = frun("Shop <x@shop.example>", html='<p><a href="https://evil.example/x">bank.example</a></p>')
     assert r.verdict in {"SUSPICIOUS", "HIGH"} and "sign in" not in r.headline.lower()
+
+
+def test_detailed_analysis_shows_only_email_specific_limitations():
+    from tests.test_scenarios import run
+    assert run("t1").limitations == []                                        # complete analysis: nothing to caveat
+    assert any("Mailbox access is off" in x for x in run("t6", relationship=False).limitations)
+    assert any("attachment" in x for x in run("t7").limitations)
+    assert any("authentication results" in x for x in run("t9").limitations)

@@ -176,9 +176,10 @@ function onShowTechnical(e) {
 }
 
 /**
- * User-facing "Detailed analysis": decision, evidence, coverage, limitations. No request IDs,
+ * User-facing "Detailed analysis": decision, evidence, email-specific limitations (only when relevant),
+ * coverage. No request IDs,
  * rule IDs, signal vectors or developer tools (those live only in dev-build Developer tools).
- * Concise by default: check lists, safeguards, assumptions and extended limitations are collapsed.
+ * Concise by default: check lists and safeguards are collapsed.
  */
 function buildTechnicalCard_(r) {
   var style = VERDICT_STYLE[r.verdict];
@@ -190,10 +191,12 @@ function buildTechnicalCard_(r) {
   var indexNote = r.score === null || r.score === undefined
     ? 'No risk index is shown because the evidence is incomplete.'
     : 'The risk index shows where this email sits within its risk level. It is not a probability.';
-  card.addSection(block_('How was this decision made?', [CardService.newTextParagraph().setText(ltrLines_([
-    escapeHtml_(r.decision_explanation),
-    '<font color="' + GREY + '">' + escapeHtml_(indexNote) + '</font>'
-  ]))]));
+  var aLines = [escapeHtml_(r.decision_explanation), '<font color="' + GREY + '">' + escapeHtml_(indexNote) + '</font>'];
+  if (r.verdict === 'LOW') {
+    aLines.push('<font color="' + GREY + '">Low risk is not a guarantee that an email is safe. If a request seems unusual, ' +
+      'confirm it through a channel you already trust.</font>');
+  }
+  card.addSection(block_('How was this decision made?', [CardService.newTextParagraph().setText(ltrLines_(aLines))]));
 
   // B. Evidence found
   var evidence = [];
@@ -220,7 +223,13 @@ function buildTechnicalCard_(r) {
   }
   card.addSection(block_('Evidence found', evidence));
 
-  // C. Analysis coverage (summary visible; lists collapsed)
+  // C. Only limitations that affect THIS email (general product limitations are in the README / dashboard).
+  if ((r.limitations || []).length) {
+    card.addSection(block_('What may affect this result', [CardService.newTextParagraph().setText(ltrLines_(
+      r.limitations.map(function (x) { return '• ' + escapeHtml_(x); })))]));
+  }
+
+  // D. Analysis coverage (summary visible; lists collapsed)
   var by = { ran: [], unavailable: [], not_applicable: [] };
   r.checks.forEach(function (c) { (by[c.state] || []).push(c); });
   var label = function (c) { return escapeHtml_(c.label || c.name) + (c.note ? ' (' + escapeHtml_(c.note) + ')' : ''); };
@@ -236,9 +245,6 @@ function buildTechnicalCard_(r) {
   ]);
   card.addSection(coverage);
 
-  // D. Limitations (summary visible; list collapsed)
-  card.addSection(collapsibleBlock_('Limitations', [escapeHtml_(r.limitations_summary)],
-    [r.limitations.map(function (x) { return '• ' + escapeHtml_(x); })]));
   return card.build();
 }
 

@@ -143,11 +143,15 @@ for (const [name, r] of Object.entries(responses)) {
         assert.ok(!/@|https?:\/\/|hxxp/.test(mainText(main)), `${name}: raw address or URL on main card`);
 
         const techHeadings = tech.sections.map(firstText);
-        assert.deepStrictEqual(techHeadings, ['How was this decision made?', 'Evidence found', 'Analysis coverage', 'Limitations']);
+        const expectTech = ['How was this decision made?', 'Evidence found']
+          .concat(r.limitations.length ? ['What may affect this result'] : []).concat(['Analysis coverage']);
+        assert.deepStrictEqual(techHeadings, expectTech, `${name}: Detailed analysis sections`);
+        assert.ok(!techHeadings.includes('Limitations'), 'no general Limitations section');
+        if (r.verdict === 'LOW') assert.ok(/not a guarantee/.test(mainText(tech)), `${name}: Low-risk safety line`);
         const techText = mainText(tech) + '\n' + plain(tech.header.title || '');
         assert.ok(!/Request [0-9a-f]{12}|\bRule\b|Signals |\bH-[ABC]\b|\bS\d{1,2} ·|D\d ·|Developer|probe|direction test/i.test(techText),
           `${name}: developer-facing information in Detailed analysis`);
-        for (const s of tech.sections.slice(2)) assert.ok(s.collapsible, 'coverage and limitations are collapsed by default');
+        assert.ok(tech.sections[tech.sections.length - 1].collapsible, 'Analysis coverage is collapsed by default');
       });
     }
   }

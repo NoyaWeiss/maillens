@@ -216,11 +216,18 @@ node addon/tests/contract.mjs http://127.0.0.1:8787 "$(grep MAILLENS_API_KEY bac
 
 ## 8. Limitations and trade-offs
 
-- **Blind spots:** a first-contact plain-text phish from attacker-owned infrastructure with valid
-  authentication; instructions only inside images (no OCR); no threat-intelligence or URL reputation;
-  English-only request patterns; a compromised known contact sending a link-based phish can rate Low.
-- **Known false positive:** a colleague forwarding a phish to IT is rated High (forwarded content is
-  evaluated as the forwarder's own).
+General limitations (shown here and in the dashboard; the add-on's Detailed analysis lists only the
+limitations that affect the open email, such as mailbox access being off or an unopened attachment):
+
+- **Low risk is not a guarantee.** A well-made attack from a new sender with valid authentication can
+  look clean. Measured recall on the synthetic v4 benchmark is 0.63 (`docs/EVALUATION_REPORT.md`).
+- **What is analyzed:** the opened email and, when you allow it, your sent-mail history. MailLens uses
+  read access to your mailbox only to read the recipients of mail you've sent and the headers of earlier
+  messages in the open thread. A known contact means someone you emailed in the last 180 days.
+- **Not analyzed:** attachment contents (names and types only), text inside images (no OCR), and website
+  or threat-intelligence reputation (no outbound lookups). Request wording is English only.
+- **Remaining blind spots:** attack types outside the action vocabulary (e.g. crypto wallet drainers), and
+  lures whose link points to the attacker's own newly registered domain with no other warning sign.
 - **Hosting:** quick tunnels have no uptime guarantee and change URL on restart. Gmail stops an add-on
   run at ~30 s, and a rare Gmail API stall (32 s observed once) can exceed it.
 - **Permissions:** relationship checks need `gmail.readonly`, which is broad. The code reads only

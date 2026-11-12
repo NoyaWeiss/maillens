@@ -117,6 +117,6 @@ def analyze(req: AnalyzeRequest, request_id: str) -> tuple[AnalyzeResponse, Deci
         out_of_scope=OUT_OF_SCOPE, assumptions=ASSUMPTIONS,
         decision_explanation=presentation.decision_explanation(d),
         safeguards=presentation.safeguards(notes),
-        limitations_summary=presentation.LIMITATIONS_SUMMARY, limitations=presentation.LIMITATIONS,
+        limitations=presentation.email_limitations(ctx, {k: getattr(v, 'value', v) for k, v in states.items()}),
     )
     return resp, d

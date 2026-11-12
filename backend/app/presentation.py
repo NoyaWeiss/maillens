@@ -7,6 +7,8 @@ Presentation only: everything here reads an existing Decision and never influenc
 - Short: titles <= 5 words, one sentence per summary, so lines stay readable when right-aligned.
 """
 
+import re
+
 from dataclasses import dataclass
 
 from .decision import Decision
@@ -323,18 +325,29 @@ def safeguards(notes: list[str]) -> list[str]:
     return out
 
 
-LIMITATIONS_SUMMARY = ("MailLens analyzes the opened email and, when you allow it, your sent-mail history "
-                       "to recognize people you know.")
-LIMITATIONS = [
-    "Relationship checks need read access to your mailbox. MailLens uses it to read the recipients of mail "
-    "you've sent and the headers of earlier messages in the open thread.",
-    "No threat-intelligence or website reputation lookups are made.",
-    "Attachments are not opened; only their names and types are checked.",
-    "Text inside images is not read.",
-    "Request detection works in English only.",
-    "A known contact means someone you emailed in the last 180 days.",
-    "A well-made attack from a new sender with valid authentication can look clean.",
-]
+# General product limitations live in README.md ("Limitations") and the dashboard, not on every card.
+# Detailed analysis shows only the limitations that affect THIS email's analysis.
+_IMG = re.compile(r"<img\b", re.I)
+
+
+def email_limitations(ctx, states: dict) -> list[str]:
+    m = ctx.req.message
+    out = []
+    if not ctx.relationship_available:
+        out.append("Mailbox access is off, so MailLens couldn't check whether you've emailed this sender before.")
+    if states.get("S1") == "unavailable":
+        out.append("No authentication results were available, so the sender's address couldn't be verified.")
+    if m.attachments:
+        n = len(m.attachments)
+        out.append(f"{'This email has an attachment' if n == 1 else f'This email has {n} attachments'}. "
+                   "MailLens checks names and file types only; it doesn't open attachments.")
+    visible = (ctx.body.visible_text or m.text_body or "").strip()
+    if m.html_body and _IMG.search(m.html_body) and len(visible) < 200:
+        out.append("This email is mostly images. Text inside images isn't read, so its wording wasn't analyzed.")
+    letters = [c for c in visible if c.isalpha()]
+    if len(letters) >= 40 and sum(not c.isascii() for c in letters) / len(letters) > 0.3:
+        out.append("This email appears to be in a language other than English. Request wording is analyzed in English only.")
+    return out
 
 
 def _m(pattern: str, text: str) -> str:

@@ -132,16 +132,8 @@
   ],
   "decision_explanation": "No check found a contradiction between what the email claims and what was observed.",
   "safeguards": [],
-  "limitations_summary": "MailLens analyzes the opened email and, when you allow it, your sent-mail history to recognize people you know.",
-  "limitations": [
-   "Relationship checks need read access to your mailbox. MailLens uses it to read the recipients of mail you've sent and the headers of earlier messages in the open thread.",
-   "No threat-intelligence or website reputation lookups are made.",
-   "Attachments are not opened; only their names and types are checked.",
-   "Text inside images is not read.",
-   "Request detection works in English only.",
-   "A known contact means someone you emailed in the last 180 days.",
-   "A well-made attack from a new sender with valid authentication can look clean."
-  ]
+  "limitations_summary": "",
+  "limitations": []
  },
  "h4": {
   "request_id": "test",
@@ -276,15 +268,9 @@
   ],
   "decision_explanation": "No check found a contradiction between what the email claims and what was observed.",
   "safeguards": [],
-  "limitations_summary": "MailLens analyzes the opened email and, when you allow it, your sent-mail history to recognize people you know.",
+  "limitations_summary": "",
   "limitations": [
-   "Relationship checks need read access to your mailbox. MailLens uses it to read the recipients of mail you've sent and the headers of earlier messages in the open thread.",
-   "No threat-intelligence or website reputation lookups are made.",
-   "Attachments are not opened; only their names and types are checked.",
-   "Text inside images is not read.",
-   "Request detection works in English only.",
-   "A known contact means someone you emailed in the last 180 days.",
-   "A well-made attack from a new sender with valid authentication can look clean."
+   "This email has an attachment. MailLens checks names and file types only; it doesn't open attachments."
   ]
  },
  "t1": {
@@ -429,16 +415,8 @@
   "safeguards": [
    "A sending-platform name (\"via \u2026\") was not treated as impersonation."
   ],
-  "limitations_summary": "MailLens analyzes the opened email and, when you allow it, your sent-mail history to recognize people you know.",
-  "limitations": [
-   "Relationship checks need read access to your mailbox. MailLens uses it to read the recipients of mail you've sent and the headers of earlier messages in the open thread.",
-   "No threat-intelligence or website reputation lookups are made.",
-   "Attachments are not opened; only their names and types are checked.",
-   "Text inside images is not read.",
-   "Request detection works in English only.",
-   "A known contact means someone you emailed in the last 180 days.",
-   "A well-made attack from a new sender with valid authentication can look clean."
-  ]
+  "limitations_summary": "",
+  "limitations": []
  },
  "t2": {
   "request_id": "test",
@@ -584,16 +562,8 @@
   ],
   "decision_explanation": "No check found a contradiction between what the email claims and what was observed.",
   "safeguards": [],
-  "limitations_summary": "MailLens analyzes the opened email and, when you allow it, your sent-mail history to recognize people you know.",
-  "limitations": [
-   "Relationship checks need read access to your mailbox. MailLens uses it to read the recipients of mail you've sent and the headers of earlier messages in the open thread.",
-   "No threat-intelligence or website reputation lookups are made.",
-   "Attachments are not opened; only their names and types are checked.",
-   "Text inside images is not read.",
-   "Request detection works in English only.",
-   "A known contact means someone you emailed in the last 180 days.",
-   "A well-made attack from a new sender with valid authentication can look clean."
-  ]
+  "limitations_summary": "",
+  "limitations": []
  },
  "t3": {
   "request_id": "test",
@@ -734,16 +704,8 @@
    "A short hidden preview line, common in newsletters, was ignored.",
    "Urgency wording was ignored because this is bulk mail."
   ],
-  "limitations_summary": "MailLens analyzes the opened email and, when you allow it, your sent-mail history to recognize people you know.",
-  "limitations": [
-   "Relationship checks need read access to your mailbox. MailLens uses it to read the recipients of mail you've sent and the headers of earlier messages in the open thread.",
-   "No threat-intelligence or website reputation lookups are made.",
-   "Attachments are not opened; only their names and types are checked.",
-   "Text inside images is not read.",
-   "Request detection works in English only.",
-   "A known contact means someone you emailed in the last 180 days.",
-   "A well-made attack from a new sender with valid authentication can look clean."
-  ]
+  "limitations_summary": "",
+  "limitations": []
  },
  "t4b": {
   "request_id": "test",
@@ -931,16 +893,8 @@
   ],
   "decision_explanation": "A strong warning sign appeared together with a risky request. Together, they make this High risk.",
   "safeguards": [],
-  "limitations_summary": "MailLens analyzes the opened email and, when you allow it, your sent-mail history to recognize people you know.",
-  "limitations": [
-   "Relationship checks need read access to your mailbox. MailLens uses it to read the recipients of mail you've sent and the headers of earlier messages in the open thread.",
-   "No threat-intelligence or website reputation lookups are made.",
-   "Attachments are not opened; only their names and types are checked.",
-   "Text inside images is not read.",
-   "Request detection works in English only.",
-   "A known contact means someone you emailed in the last 180 days.",
-   "A well-made attack from a new sender with valid authentication can look clean."
-  ]
+  "limitations_summary": "",
+  "limitations": []
  },
  "t5": {
   "request_id": "test",
@@ -1130,16 +1084,8 @@
   ],
   "decision_explanation": "A strong warning sign appeared together with a risky request. Together, they make this High risk.",
   "safeguards": [],
-  "limitations_summary": "MailLens analyzes the opened email and, when you allow it, your sent-mail history to recognize people you know.",
-  "limitations": [
-   "Relationship checks need read access to your mailbox. MailLens uses it to read the recipients of mail you've sent and the headers of earlier messages in the open thread.",
-   "No threat-intelligence or website reputation lookups are made.",
-   "Attachments are not opened; only their names and types are checked.",
-   "Text inside images is not read.",
-   "Request detection works in English only.",
-   "A known contact means someone you emailed in the last 180 days.",
-   "A well-made attack from a new sender with valid authentication can look clean."
-  ]
+  "limitations_summary": "",
+  "limitations": []
  },
  "t6": {
   "request_id": "test",
@@ -1296,16 +1242,8 @@
   ],
   "decision_explanation": "The email asks for something hard to undo. Nothing else looks wrong, but the request alone deserves verification.",
   "safeguards": [],
-  "limitations_summary": "MailLens analyzes the opened email and, when you allow it, your sent-mail history to recognize people you know.",
-  "limitations": [
-   "Relationship checks need read access to your mailbox. MailLens uses it to read the recipients of mail you've sent and the headers of earlier messages in the open thread.",
-   "No threat-intelligence or website reputation lookups are made.",
-   "Attachments are not opened; only their names and types are checked.",
-   "Text inside images is not read.",
-   "Request detection works in English only.",
-   "A known contact means someone you emailed in the last 180 days.",
-   "A well-made attack from a new sender with valid authentication can look clean."
-  ]
+  "limitations_summary": "",
+  "limitations": []
  },
  "t7": {
   "request_id": "test",
@@ -1526,15 +1464,9 @@
   ],
   "decision_explanation": "One deliberate deception technique was found. On its own, that is enough for High risk.",
   "safeguards": [],
-  "limitations_summary": "MailLens analyzes the opened email and, when you allow it, your sent-mail history to recognize people you know.",
+  "limitations_summary": "",
   "limitations": [
-   "Relationship checks need read access to your mailbox. MailLens uses it to read the recipients of mail you've sent and the headers of earlier messages in the open thread.",
-   "No threat-intelligence or website reputation lookups are made.",
-   "Attachments are not opened; only their names and types are checked.",
-   "Text inside images is not read.",
-   "Request detection works in English only.",
-   "A known contact means someone you emailed in the last 180 days.",
-   "A well-made attack from a new sender with valid authentication can look clean."
+   "This email has an attachment. MailLens checks names and file types only; it doesn't open attachments."
   ]
  },
  "t8": {
@@ -1743,16 +1675,8 @@
   ],
   "decision_explanation": "One deliberate deception technique was found. On its own, that is enough for High risk.",
   "safeguards": [],
-  "limitations_summary": "MailLens analyzes the opened email and, when you allow it, your sent-mail history to recognize people you know.",
-  "limitations": [
-   "Relationship checks need read access to your mailbox. MailLens uses it to read the recipients of mail you've sent and the headers of earlier messages in the open thread.",
-   "No threat-intelligence or website reputation lookups are made.",
-   "Attachments are not opened; only their names and types are checked.",
-   "Text inside images is not read.",
-   "Request detection works in English only.",
-   "A known contact means someone you emailed in the last 180 days.",
-   "A well-made attack from a new sender with valid authentication can look clean."
-  ]
+  "limitations_summary": "",
+  "limitations": []
  },
  "t9": {
   "request_id": "test",
@@ -1936,15 +1860,9 @@
   ],
   "decision_explanation": "The sender couldn't be verified, and the email contains a risky request or an anomaly. Rating it Low would be misleading, so the result is Inconclusive.",
   "safeguards": [],
-  "limitations_summary": "MailLens analyzes the opened email and, when you allow it, your sent-mail history to recognize people you know.",
+  "limitations_summary": "",
   "limitations": [
-   "Relationship checks need read access to your mailbox. MailLens uses it to read the recipients of mail you've sent and the headers of earlier messages in the open thread.",
-   "No threat-intelligence or website reputation lookups are made.",
-   "Attachments are not opened; only their names and types are checked.",
-   "Text inside images is not read.",
-   "Request detection works in English only.",
-   "A known contact means someone you emailed in the last 180 days.",
-   "A well-made attack from a new sender with valid authentication can look clean."
+   "No authentication results were available, so the sender's address couldn't be verified."
   ]
  },
  "t6_no_relationship": {
@@ -2101,15 +2019,9 @@
   "safeguards": [
    "Look-alike domains were compared with known brands only."
   ],
-  "limitations_summary": "MailLens analyzes the opened email and, when you allow it, your sent-mail history to recognize people you know.",
+  "limitations_summary": "",
   "limitations": [
-   "Relationship checks need read access to your mailbox. MailLens uses it to read the recipients of mail you've sent and the headers of earlier messages in the open thread.",
-   "No threat-intelligence or website reputation lookups are made.",
-   "Attachments are not opened; only their names and types are checked.",
-   "Text inside images is not read.",
-   "Request detection works in English only.",
-   "A known contact means someone you emailed in the last 180 days.",
-   "A well-made attack from a new sender with valid authentication can look clean."
+   "Mailbox access is off, so MailLens couldn't check whether you've emailed this sender before."
   ]
  },
  "t1_no_relationship": {
@@ -2256,15 +2168,9 @@
    "A sending-platform name (\"via \u2026\") was not treated as impersonation.",
    "Look-alike domains were compared with known brands only."
   ],
-  "limitations_summary": "MailLens analyzes the opened email and, when you allow it, your sent-mail history to recognize people you know.",
+  "limitations_summary": "",
   "limitations": [
-   "Relationship checks need read access to your mailbox. MailLens uses it to read the recipients of mail you've sent and the headers of earlier messages in the open thread.",
-   "No threat-intelligence or website reputation lookups are made.",
-   "Attachments are not opened; only their names and types are checked.",
-   "Text inside images is not read.",
-   "Request detection works in English only.",
-   "A known contact means someone you emailed in the last 180 days.",
-   "A well-made attack from a new sender with valid authentication can look clean."
+   "Mailbox access is off, so MailLens couldn't check whether you've emailed this sender before."
   ]
  }
 }
