@@ -170,6 +170,9 @@ function scanPageHtml_(ticket) {
     'function next(p,t){if(cancelled){google.script.run.withSuccessHandler(function(){msg.textContent="Scan cancelled. Emails already analyzed are kept.";stop.hidden=true;}).scanFinish(T,t,"Cancelled");return;}' +
     'if(!p.length){stop.hidden=true;google.script.run.withSuccessHandler(function(t){show(t);msg.textContent+=". Finished: return to the dashboard.";}).withFailureHandler(fail).scanFinish(T,t,"");return;}' +
     'google.script.run.withSuccessHandler(function(t2){show(t2);next(p.slice(5),t2);}).withFailureHandler(fail).scanBatch(T,p.slice(0,5),t);}' +
+    // Content-free "page loaded" signal to the dashboard (when framed): distinguishes "Google refused to show
+    // the page in a frame" from "loaded but waiting for Google". Carries no data.
+    'try{if(window.top!==window.self)window.top.postMessage({maillens:"scan-page-loaded"},"*");}catch(e){}' +
     'if(!T){fail("This scan link is invalid. Start the scan again from the dashboard.");}else{' +
     'google.script.run.withSuccessHandler(function(r){show(r.totals);next(r.pending,r.totals);}).withFailureHandler(fail).scanStart(T);}' +
     '</script></body></html>';

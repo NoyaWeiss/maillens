@@ -53,7 +53,7 @@ function serviceStatus_() {
 }
 
 var STATUS_VIEW = {
-  ready: { icon: 'check_circle', color: '#188038', title: 'Analysis service ready', text: 'Connected and ready to analyze emails.' },
+  ready: { icon: 'check_circle', color: '#188038', title: 'Analysis service ready', text: '' },
   unavailable: { icon: 'cloud_off', color: '#b06000', title: 'Analysis service unavailable', text: "MailLens can't reach its analysis service right now." },
   key_rejected: { icon: 'key_off', color: '#b06000', title: 'Setup needs attention', text: 'The analysis service did not accept the saved key.' },
   blocked: { icon: 'block', color: '#c5221f', title: 'Service URL not permitted', text: 'This add-on only connects to its approved analysis service.' },
@@ -78,9 +78,10 @@ function buildWelcomeCard_() {
     .setTitle(ltr_('Welcome to MailLens')).setSubtitle(ltr_('Email risk analysis'))
     .setImageUrl(WELCOME_LOGO).setImageStyle(CardService.ImageStyle.CIRCLE));
 
+  // View full dashboard first, directly under the header (same button as on the result card).
+  if (status === 'ready') card.addSection(CardService.newCardSection().addWidget(dashboardButtonSet_()));
+
   var intro = CardService.newCardSection()
-    .addWidget(CardService.newTextParagraph().setText(ltr_(
-      'MailLens checks whether an email is what it claims to be, and explains any risk in plain language.')))
     .addWidget(withIcon_(CardService.newDecoratedText()
       .setText(ltrLines_(['<b><font color="' + view.color + '">' + view.title + '</font></b>', escapeHtml_(view.text)]))
       .setWrapText(true), view.icon, view.title));
@@ -90,12 +91,11 @@ function buildWelcomeCard_() {
   }
   if (status === 'ready') {
     intro.addWidget(withIcon_(CardService.newDecoratedText()
-      .setText(ltrLines_(['<b>Open an email to analyze it</b>', 'The result appears here automatically.']))
+      .setText(ltrLines_(['<b>Open an email to analyze it</b>']))
       .setWrapText(true), 'mail', 'Open an email'));
   }
   card.addSection(intro);
   var buttons = CardService.newButtonSet();
-  if (status === 'ready') buttons.addButton(dashboardButton_('View full dashboard', CardService.TextButtonStyle.FILLED_TONAL));
   buttons.addButton(CardService.newTextButton().setText(ltr_(status === 'ready' ? 'Advanced settings' : 'Open advanced settings'))
       .setTextButtonStyle(status === 'ready' ? CardService.TextButtonStyle.BORDERLESS : CardService.TextButtonStyle.FILLED_TONAL)
       .setOnClickAction(CardService.newAction().setFunctionName('onOpenAdvancedSettings')));
@@ -127,17 +127,16 @@ function buildAdvancedSettingsCard_() {
       .setText(ltrLines_(['<b><font color="' + view.color + '">' + view.title + '</font></b>']))
       .setWrapText(true), view.icon, view.title)));
 
-  var granted = getGrantedScopes_();
-  var relOn = hasMailboxAccess_(granted);
-  var rel = withIcon_(CardService.newDecoratedText()
-    .setText(ltrLines_(['<b>Relationship checks: ' + (relOn ? 'on' : 'off') + '</b>',
-      'Recognizes people you have emailed, using the recipients of mail you sent.']))
-    .setWrapText(true), 'group', 'Relationship checks');
-  if (!relOn) {
-    rel.setButton(CardService.newTextButton().setText(ltr_('Enable')).setTextButtonStyle(CardService.TextButtonStyle.OUTLINED)
-      .setOnClickAction(CardService.newAction().setFunctionName('onEnableMailboxAccess')));
+  // Relationship checks need the optional gmail.readonly consent, which Google asks for separately. When it
+  // is granted there is nothing to control, so no line is shown; when it isn't, Enable is the only way to
+  // grant it, so the prompt stays.
+  if (!hasMailboxAccess_(getGrantedScopes_())) {
+    card.addSection(CardService.newCardSection().addWidget(withIcon_(CardService.newDecoratedText()
+      .setText(ltrLines_(['<b>Relationship checks are off</b>', 'Recognizes people you have emailed, using the recipients of mail you sent.']))
+      .setWrapText(true)
+      .setButton(CardService.newTextButton().setText(ltr_('Enable')).setTextButtonStyle(CardService.TextButtonStyle.OUTLINED)
+        .setOnClickAction(CardService.newAction().setFunctionName('onEnableMailboxAccess'))), 'group', 'Relationship checks')));
   }
-  card.addSection(CardService.newCardSection().addWidget(rel));
 
   if (isDevBuild_()) {
     card.addSection(CardService.newCardSection().addWidget(CardService.newTextButton().setText(ltr_('Developer tools'))

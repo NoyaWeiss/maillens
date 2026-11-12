@@ -82,11 +82,11 @@ class LaunchRequest(BaseModel):
     scan_url: str | None = Field(default=None, pattern=_SCAN_URL)
 
 
-RANGES = {"1H": 3600, "24H": 86400, "7D": 7 * 86400, "30D": 30 * 86400}
 
 
 class ScanRequest(BaseModel):
-    range: str = Field(pattern="^(1H|24H|7D|30D)$")
+    # Received-time window in seconds, from the dashboard's slider (1 hour .. 1 year, calendar-aware months).
+    range_seconds: int = Field(ge=3600, le=366 * 86400)
 
 
 class ScanAuth(BaseModel):
@@ -218,7 +218,7 @@ def create_app() -> FastAPI:
     def dashboard_emails(s=Depends(require_session)) -> dict:
         acct, context, label, _ = s
         return {"emails": history.list(acct), "context": context, "account_label": label, "scan_available": bool(s[3]),
-                "retention_days": 30, "now": time.time()}
+                "retention_days": 366, "now": time.time()}
 
     @app.get("/v1/dashboard/emails/{ref}")
     def dashboard_email(ref: str, s=Depends(require_session)) -> dict:
@@ -235,7 +235,7 @@ def create_app() -> FastAPI:
         acct, _, _, scan_url = s
         if not scan_url:
             raise HTTPException(status.HTTP_409_CONFLICT, "inbox scanning is not set up for this add-on")
-        ticket = history.mint_ticket(acct, RANGES[body.range])
+        ticket = history.mint_ticket(acct, body.range_seconds)
         return {"ticket": ticket, "url": f"{scan_url}?t={ticket}", "limit": SCAN_LIMIT}
 
     @app.get("/v1/dashboard/scan/{ticket}")

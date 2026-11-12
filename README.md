@@ -146,7 +146,7 @@ Why it works this way (verified against Google's documentation):
   2 minutes. Only that code goes in the URL fragment: never an OAuth token, API key, email address or content.
   The dashboard exchanges it for an 8-hour session bound to this browser tab. The selected email is resolved
   server-side from that account's own history.
-- **History** keeps subject, sender and the analysis result (never the body) for 30 days, at most 500 emails per
+- **History** keeps subject, sender and the analysis result (never the body) for 1 year, at most 500 emails per
   account, in the `maillens-data` Docker volume. **Clear history** on the Overview deletes it.
 - **Tunnel restarts:** a quick tunnel gets a new URL on restart. Run `./scripts/push-addon.sh` again so both
   allow-lists match the new host.

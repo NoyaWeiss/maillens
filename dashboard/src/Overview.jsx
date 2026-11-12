@@ -1,23 +1,25 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import ActivityChart from './ActivityChart.jsx';
-import { RANGES, filterByReceived } from './timefilter.js';
+import { DEFAULT_STOP, STOPS, cutoffFor, filterByReceived, shortLabel, stopLabel } from './timefilter.js';
 import EmailAssessment from './Investigation.jsx';
 import { api } from './api.js';
-import { Panel, SectionHeader, Segmented, State, VERDICTS, VERDICT_ORDER, VerdictBadge, fmtDate, splitSender } from './ui.jsx';
+import { Panel, SectionHeader, State, VERDICTS, VERDICT_ORDER, VerdictBadge, fmtDate, splitSender } from './ui.jsx';
 
-const RANGE_OPTIONS = Object.keys(RANGES).map((k) => ({ value: k, label: k }));
 
 export default function Overview({ source, selected, onSelect, onBack, onClear, onDemo, onRefresh }) {
-  const [range, setRangeState] = useState('7D');
+  const [stopIndex, setStopIndex] = useState(DEFAULT_STOP);
   const [now, setNow] = useState(() => Date.now() / 1000);
-  const setRange = (r) => { setNow(Date.now() / 1000); setRangeState(r); };  // fresh cutoff on every change
+  const setStop = (i) => { setNow(Date.now() / 1000); setStopIndex(i); };  // fresh cutoff on every change
   useEffect(() => setNow(Date.now() / 1000), [source.emails]);
+  const stop = STOPS[stopIndex];
+  const label = stopLabel(stop);
+  const cutoff = useMemo(() => cutoffFor(stop, now), [stop, now]);
   const [query, setQuery] = useState('');
   const [verdict, setVerdict] = useState('ALL');
   const { emails = [], mode } = source;
 
   // Every count, the chart and the list use RECEIVED time only (see timefilter.js).
-  const inRange = useMemo(() => filterByReceived(emails, range, now), [emails, range, now]);
+  const inRange = useMemo(() => filterByReceived(emails, cutoff), [emails, cutoff]);
   const unknown = emails.filter((e) => typeof e.received_at !== 'number').length;
   const list = useMemo(() => inRange.filter((e) => (verdict === 'ALL' || e.verdict === verdict) &&
     (!query || `${e.subject} ${e.sender}`.toLowerCase().includes(query.trim().toLowerCase()))), [inRange, query, verdict]);
@@ -27,9 +29,7 @@ export default function Overview({ source, selected, onSelect, onBack, onClear, 
 
   return (
     <>
-      <SectionHeader title="Overview" subtitle="Monitor your email security, search messages, and understand potential threats.">
-        {mode !== 'none' ? <Segmented label="Time range" options={RANGE_OPTIONS} value={range} onChange={setRange} /> : null}
-      </SectionHeader>
+      <SectionHeader title="Overview" subtitle="Monitor your email security, search messages, and understand potential threats." />
 
       {mode === 'none' ? (
         <Panel>
@@ -39,7 +39,10 @@ export default function Overview({ source, selected, onSelect, onBack, onClear, 
         </Panel>
       ) : (
         <>
-          <p className="range-note">Showing emails received in the {RANGES[range].label}.</p>
+          <section className="panel range-panel" aria-label="Time range">
+            <RangeSlider index={stopIndex} onChange={setStop} label={label} />
+            <ScanInbox mode={mode} available={source.scan} label={label} cutoff={cutoff} onFinished={onRefresh} />
+          </section>
           <div className="stats">
             <Stat label="Analyzed emails" value={inRange.length} />
             <Stat label="High risk" value={count('HIGH')} tone="high" />
@@ -47,8 +50,8 @@ export default function Overview({ source, selected, onSelect, onBack, onClear, 
             <Stat label="Inconclusive" value={count('INCONCLUSIVE')} tone="inc" />
           </div>
 
-          <Panel title="Risk activity" aside={<ScanInbox mode={mode} available={source.scan} range={range} onFinished={onRefresh} />}>
-            {emails.length ? <ActivityChart emails={emails} range={range} now={now} />
+          <Panel title="Risk activity">
+            {emails.length ? <ActivityChart emails={emails} cutoff={cutoff} now={now} label={label} />
               : <State title="No analyzed emails yet">Open an email with MailLens in Gmail, or scan your inbox.</State>}
           </Panel>
 
@@ -82,7 +85,7 @@ export default function Overview({ source, selected, onSelect, onBack, onClear, 
                     );
                   })}
                 </ul>
-              ) : <p className="muted pad">No emails received in the {RANGES[range].label} match.</p>}
+              ) : <p className="muted pad">No emails received in the {label} match.</p>}
               <p className="footnote">{mode === 'demo' ? 'Synthetic demo emails.' : 'Only emails MailLens has analyzed are listed.'}
                 {unknown ? ` ${unknown} older ${unknown === 1 ? 'record has' : 'records have'} no received time and ${unknown === 1 ? 'is' : 'are'} hidden; open ${unknown === 1 ? 'it' : 'them'} in Gmail again to update.` : ''}</p>
             </Panel>
@@ -90,6 +93,26 @@ export default function Overview({ source, selected, onSelect, onBack, onClear, 
         </>
       )}
     </>
+  );
+}
+
+const TICKS = [0, 5, 9, 12, 14, 17]; // 1h, 1d, 1w, 1mo, 3mo, 1y
+
+/** Time-range slider: discrete, log-like stops from 1 hour to 1 year (received time). */
+function RangeSlider({ index, onChange, label }) {
+  const pct = (100 * index) / (STOPS.length - 1);
+  return (
+    <div className="range">
+      <label htmlFor="range" className="range-label">Emails received in the <b>{label}</b></label>
+      <input id="range" type="range" min="0" max={STOPS.length - 1} step="1" value={index} style={{ '--pct': `${pct}%` }}
+        onChange={(e) => onChange(Number(e.target.value))} aria-valuetext={`Emails received in the ${label}`} />
+      <div className="range-ticks" aria-hidden="true">
+        {TICKS.map((i) => (
+          <button key={i} type="button" tabIndex={-1} style={{ left: `${(100 * i) / (STOPS.length - 1)}%` }}
+            className={`${i === index ? 'on' : ''} ${i === 0 ? 'first' : i === STOPS.length - 1 ? 'last' : ''}`} onClick={() => onChange(i)}>{shortLabel(STOPS[i])}</button>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -108,11 +131,17 @@ function Stat({ label, value, tone }) {
  * browser blocks Google's sign-in inside frames, or Google needs a consent click, a small Google window
  * is offered instead and closed automatically when the scan finishes.
  */
-function ScanInbox({ mode, available, range, onFinished }) {
+function ScanInbox({ mode, available, label, cutoff, onFinished }) {
   const [scan, setScan] = useState({ status: 'idle' });
   const timer = useRef(null);
   const win = useRef(null);
+  const pageLoaded = useRef(false);
   useEffect(() => () => clearTimeout(timer.current), []);
+  useEffect(() => {  // content-free signal from the Google-hosted scan page: "Google showed me in the frame"
+    const on = (e) => { if (/\.googleusercontent\.com$/.test(new URL(e.origin).hostname) && e.data && e.data.maillens === 'scan-page-loaded') pageLoaded.current = true; };
+    window.addEventListener('message', on);
+    return () => window.removeEventListener('message', on);
+  }, []);
 
   if (mode !== 'account') return null;
   if (!available) return <span className="muted small" title="Run scripts/push-addon.sh to enable inbox scanning.">Inbox scan isn't set up</span>;
@@ -132,7 +161,7 @@ function ScanInbox({ mode, available, range, onFinished }) {
         if (p.done > lastDone) onFinished(); // new results appear in Overview while the scan runs
         if (['done', 'cancelled', 'error'].includes(p.state)) { finish({ status: p.state, p, url }); return; }
         if (waited > 15 * 60 * 1000) { finish({ status: 'error', p: { ...p, error: 'The scan timed out.' }, url }); return; }
-        setScan((s) => ({ ...s, status: p.state === 'running' ? 'running' : 'waiting', p, needsWindow: p.state === 'waiting' && waited > 12000 }));
+        setScan((s) => ({ ...s, status: p.state === 'running' ? 'running' : 'waiting', p, needsWindow: p.state === 'waiting' && waited > 12000, frameLoaded: pageLoaded.current }));
         poll(ticket, url, started, p.done);
       } catch (e) { setScan({ status: 'error', p: { error: e.message } }); }
     }, 1500);
@@ -140,9 +169,10 @@ function ScanInbox({ mode, available, range, onFinished }) {
 
   const start = async () => {
     clearTimeout(timer.current);
+    pageLoaded.current = false;
     setScan({ status: 'starting' });
     try {
-      const r = await api.startScan(range);
+      const r = await api.startScan(Math.max(3600, Math.round(Date.now() / 1000 - cutoff)));
       setScan({ status: 'waiting', url: r.url, frame: true });
       poll(r.ticket, r.url, Date.now(), 0);
     } catch (e) { setScan({ status: 'error', p: { error: e.message } }); }
@@ -163,7 +193,12 @@ function ScanInbox({ mode, available, range, onFinished }) {
   let line = null;
   if (scan.status === 'starting' || (scan.status === 'waiting' && !scan.needsWindow)) line = <span className="scan-msg"><span className="spinner sm" />Connecting to Gmail…</span>;
   if (scan.status === 'waiting' && scan.needsWindow) {
-    line = <span className="scan-msg">Google needs to confirm access. <button type="button" className="link" onClick={openWindow}>Continue in a Google window</button></span>;
+    line = (
+      <span className="scan-msg">
+        {scan.frameLoaded ? 'Google is waiting for you to confirm access.' : 'Your browser didn\u2019t let Google run the scan inside the dashboard.'}
+        <button type="button" className="link" onClick={openWindow}>Continue in a Google window</button>
+      </span>
+    );
   }
   if (scan.status === 'running') {
     line = (
@@ -192,7 +227,7 @@ function ScanInbox({ mode, available, range, onFinished }) {
         <button type="button" className={`btn ${finished && tone_(scan, p) ? 'btn-secondary' : 'btn-primary'}`} onClick={start} disabled={busy}>
           {busy ? 'Scanning…' : finished && (p.failed || scan.status !== 'done') ? (p.failed ? 'Retry failed' : 'Scan again') : 'Scan inbox'}
         </button>
-        <span className="scan-hint">Scans emails received in the {RANGES[range].label} (up to 50).</span>
+        <span className="scan-hint">Scans emails received in the {label} (up to 50).</span>
       </span>
       {busy && scan.frame && scan.url ? <iframe className="scan-frame" title="MailLens inbox scan" src={scan.url} /> : null}
     </div>

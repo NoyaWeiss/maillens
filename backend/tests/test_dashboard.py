@@ -125,7 +125,7 @@ def test_scan_ticket_is_bound_to_the_session_account():
     c = client()
     acct, other = "s" * 64, "o" * 64
     h = scan_session(c, acct)
-    r = c.post("/v1/dashboard/scan", json={"range": "24H"}, headers=h).json()
+    r = c.post("/v1/dashboard/scan", json={"range_seconds": 86400}, headers=h).json()
     assert r["url"].startswith(SCAN_URL + "?t=") and acct not in r["url"]
     t = r["ticket"]
     # A different Google account (different private key) can't use this ticket.
@@ -144,7 +144,7 @@ def test_scan_ticket_is_bound_to_the_session_account():
 def test_scan_requires_setup_and_valid_script_url():
     c = client()
     h, _, _ = session(c, "n" * 64)
-    assert c.post("/v1/dashboard/scan", json={"range": "24H"}, headers=h).status_code == 409
+    assert c.post("/v1/dashboard/scan", json={"range_seconds": 86400}, headers=h).status_code == 409
     bad = c.post("/v1/dashboard/launch", json={"account": "n" * 64, "scan_url": "https://evil.example/exec"}, headers=KEY)
     assert bad.status_code == 422
 
@@ -190,3 +190,12 @@ def test_old_email_analyzed_today_keeps_its_received_time_and_unknown_is_never_a
     by_msg = sorted(rows.values(), key=lambda e: e["received_at"] is None)
     assert abs(by_msg[0]["received_at"] - int(old_ms) / 1000) < 1 and by_msg[0]["analyzed_at"] > _t.time() - 60
     assert by_msg[1]["received_at"] is None                                                            # unknown stays unknown
+
+
+def test_scan_window_bounds():
+    c = client()
+    h = scan_session(c, "w" * 64)
+    assert c.post("/v1/dashboard/scan", json={"range_seconds": 3599}, headers=h).status_code == 422
+    assert c.post("/v1/dashboard/scan", json={"range_seconds": 367 * 86400}, headers=h).status_code == 422
+    t = c.post("/v1/dashboard/scan", json={"range_seconds": 61 * 86400}, headers=h).json()["ticket"]   # e.g. "2 months"
+    assert c.post("/v1/scan/start", json={"ticket": t, "account": "w" * 64}, headers=KEY).json()["range_seconds"] == 61 * 86400

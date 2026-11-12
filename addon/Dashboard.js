@@ -51,8 +51,17 @@ function onOpenDashboard(e) {
   }
 }
 
-function dashboardButton_(text, style, messageId) {
+var DASHBOARD_NAVY = '#1b2a4a';
+
+/**
+ * The one "View full dashboard" button used on the Home screen and the result card: FILLED with a navy
+ * background. CardService sets the label color itself (white on a dark fill); it can't be set directly.
+ */
+function dashboardButtonSet_(messageId) {
   var action = CardService.newAction().setFunctionName('onOpenDashboard');
   if (messageId) action.setParameters({ messageId: String(messageId) });
-  return CardService.newTextButton().setText(ltr_(text)).setTextButtonStyle(style).setOnClickAction(action);
+  var b = CardService.newTextButton().setText(ltr_('View full dashboard'))
+    .setTextButtonStyle(CardService.TextButtonStyle.FILLED).setOnClickAction(action);
+  try { b.setBackgroundColor(DASHBOARD_NAVY); } catch (e) { /* older hosts: default filled color */ }
+  return CardService.newButtonSet().addButton(b);
 }

@@ -81,7 +81,7 @@ export default function HowItWorks({ source, selected }) {
               <p className="reason-title">Privacy</p>
               <ul className="plain">
                 <li>Emails go only to your own MailLens backend, which makes no outside calls.</li>
-                <li>History keeps subject, sender and result for 30 days, never the body.</li>
+                <li>History keeps subject, sender and result for up to a year, never the body; you can clear it anytime.</li>
                 <li>Dashboard links work once and contain no credentials. No new Gmail permissions.</li>
               </ul>
             </div>

@@ -56,6 +56,6 @@ export const api = {
   email: (id) => request(`/v1/dashboard/emails/${encodeURIComponent(id)}`, { auth: true }),
   clearHistory: () => request('/v1/dashboard/history', { method: 'DELETE', auth: true }),
   evaluation: () => request('/v1/dashboard/evaluation'),
-  startScan: (range) => request('/v1/dashboard/scan', { method: 'POST', body: { range }, auth: true }),
+  startScan: (rangeSeconds) => request('/v1/dashboard/scan', { method: 'POST', body: { range_seconds: rangeSeconds }, auth: true }),
   scanStatus: (ticket) => request(`/v1/dashboard/scan/${encodeURIComponent(ticket)}`, { auth: true }),
 };

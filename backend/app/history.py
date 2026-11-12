@@ -7,7 +7,7 @@ Privacy and isolation design:
   forged without the server secret.
 - Gmail message ids are stored only as HMAC(server secret, account id + message id).
 - Stored per email: time, verdict, risk index, subject, sender, and the analysis result the add-on
-  already showed. Never the message body. Retention: 30 days, at most MAX_PER_ACCOUNT emails.
+  already showed. Never the message body. Retention: 1 year (the slider maximum), at most MAX_PER_ACCOUNT emails.
 - Dashboard access needs a one-time launch code minted by the add-on (API key + account key) at click
   time. The code is exchanged for a short-lived bearer session bound to that account only.
 """
@@ -21,7 +21,7 @@ import threading
 import time
 from pathlib import Path
 
-RETENTION_S = 30 * 24 * 3600
+RETENTION_S = 366 * 24 * 3600  # matches the 1-year time-range slider
 MAX_PER_ACCOUNT = 500
 CODE_TTL_S = 120
 SESSION_TTL_S = 8 * 3600

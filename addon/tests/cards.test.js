@@ -33,6 +33,7 @@ function strictCardService() {
       setValue(v) { w.value = v; strings.push(String(v)); return this; },
       setFieldName(v) { w.field = v; return this; },
       setButton(b) { w.button = b; return this; },
+      setBackgroundColor(c) { w.bg = c; return this; },
       setOnClickAction(a) { w.action = a; return this; },
     }));
   };
@@ -262,12 +263,24 @@ test('regression: a stale URL saved in user settings never overrides the deploym
   assert.strictEqual(s.managed, true);
 });
 
-test('dashboard entry points: main card (with this email) and Welcome screen (account level)', () => {
+test('View full dashboard: first on the result card and the Home screen, FILLED navy, same wording', () => {
   const { CardService, built } = strictCardService();
   const ctx = load(CardService, false, { props: { backendUrl: 'https://b.example', apiKey: 'k' } });
-  ctx.buildResultCard_(responses.t5, 'msg123', ['gmail.readonly']);
-  const assessment = built[0].sections[0].widgets[1];
-  assert.strictEqual(plain(assessment.button.text).replace(/[⁦⁩]/g, ''), 'Full dashboard');
-  assert.strictEqual(JSON.stringify([assessment.button.action.fn, assessment.button.action.params]), JSON.stringify(['onOpenDashboard', { messageId: 'msg123' }]));
-  assert.strictEqual(built[0].sections[0].widgets.length, 3, 'Risk assessment keeps its approved widgets');
+  ctx.buildResultCard_(responses.t5, 'msg123', ['gmail.readonly'], 'canonical123');
+  const card = built[0];
+  const btn = card.sections[0].widgets[0].buttons[0];
+  assert.strictEqual(plain(btn.text).replace(/[⁦⁩]/g, ''), 'View full dashboard');
+  assert.deepStrictEqual([btn.style, btn.bg], ['FILLED', '#1b2a4a']);
+  assert.strictEqual(JSON.stringify([btn.action.fn, btn.action.params]), JSON.stringify(['onOpenDashboard', { messageId: 'canonical123' }]));
+  assert.strictEqual(plain(firstText(card.sections[1])).replace(/[⁦⁩]/g, ''), 'Risk assessment');
+  assert.ok(!Object.keys(card.sections[1].widgets[1]).includes('button'), 'assessment row itself unchanged');
+  const ctx2 = load(CardService, false, { props: { backendUrl: 'https://b.example', apiKey: 'k' } });
+  ctx2.serviceStatus_ = () => 'ready';
+  const home = ctx2.buildWelcomeCard_();
+  const hb = home.sections[0].widgets[0].buttons[0];
+  assert.deepStrictEqual([plain(hb.text).replace(/[⁦⁩]/g, ''), hb.style, hb.bg], ['View full dashboard', 'FILLED', '#1b2a4a']);
+  assert.ok(!Object.keys(hb.action).includes('params'), 'Home opens the account-level view (no email selected)');
+  const homeText = mainText(home);
+  for (const gone of ['The result appears here automatically.', 'Connected and ready to analyze emails.', 'checks whether an email is what it claims'])
+    assert.ok(!homeText.includes(gone), gone);
 });

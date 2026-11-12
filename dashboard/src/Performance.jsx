@@ -37,8 +37,6 @@ function Body({ d, n }) {
   const [all, setAll] = useState(false);
   const mal = d.by_category.filter((c) => c.label === 'Malicious');
   const leg = d.by_category.filter((c) => c.label === 'Legitimate');
-  const strong = mal.filter((c) => c.alerts === c.n);
-  const missed = mal.filter((c) => c.alerts === 0);
   const fpCats = leg.filter((c) => c.alerts > 0);
 
   let shown;
@@ -65,12 +63,12 @@ function Body({ d, n }) {
               <Cell n={o.FP} label="False alarms" tone="bad" /><Cell n={o.TN} label="Correctly cleared" tone="good" /></div>
           </div>
         </Panel>
-        <Panel title="At a glance">
-          <div className="glance">
-            <p className="glance-label good">Strongest</p>
-            <p>Every case caught in {strong.length} of {mal.length} attack types, including {strong.slice(0, 3).map((c) => c.name).join(', ')}.</p>
-            <p className="glance-label bad">Missed</p>
-            <p>{missed.length ? `No cases caught in ${missed.map((c) => c.name).join(', ')}.` : 'Every attack type was caught at least once.'}</p>
+        <Panel title="What this means">
+          <div className="meaning">
+            <p>Of the {n.mal} malicious emails, MailLens flagged <b>{o.TP}</b> and missed <b>{o.FN}</b>.</p>
+            <p>Of the {n.leg} legitimate emails, it correctly cleared <b>{o.TN}</b> and raised <b>{o.FP}</b> false {o.FP === 1 ? 'alarm' : 'alarms'}.</p>
+            <p className="meaning-takeaway">When MailLens raises an alert, it is almost always a real attack. The trade-off is that
+              {' '}{o.FN / n.mal >= 0.3 ? `about ${Math.round((10 * o.FN) / n.mal)} in 10` : `${o.FN} of ${n.mal}`} attacks in this benchmark pass without an alert.</p>
           </div>
         </Panel>
       </div>
