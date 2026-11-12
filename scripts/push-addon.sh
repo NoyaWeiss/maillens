@@ -4,6 +4,7 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 export PATH="$HOME/.local/opt/node/bin:$HOME/.local/bin:$PATH"
+mkdir -p "$ROOT/.run"
 URL="${1:-$(cat "$ROOT/.run/url")}"
 KEY="$(grep '^MAILLENS_API_KEY=' "$ROOT/backend/.env" | cut -d= -f2-)"
 # MAILLENS_BUILD=prod produces the user-facing build: no developer tools anywhere in the UI.
@@ -30,5 +31,10 @@ m["urlFetchWhitelist"] = ["https://gmail.googleapis.com/", f"https://{u.hostname
 json.dump(m, open(sys.argv[1], "w"), indent=2)
 print("allow-list:", m["urlFetchWhitelist"])
 PY
+if [ "${DRY_RUN:-0}" = "1" ]; then
+  echo "DRY_RUN: generated addon/Secrets.js and the manifest allow-list above; nothing pushed."
+  cp "$ROOT/addon/appsscript.json" "$ROOT/.run/appsscript.dryrun.json"
+  exit 0
+fi
 cd "$ROOT" && clasp push --force | tee "$ROOT/.run/push.log"
 grep -q "Pushed" "$ROOT/.run/push.log" || { echo "PUSH FAILED"; exit 1; }

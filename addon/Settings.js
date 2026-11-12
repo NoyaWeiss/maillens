@@ -6,16 +6,21 @@
  * the private Apps Script project, never to git. The API key is never displayed or echoed back.
  */
 
-var STATUS_CACHE_KEY = 'service_status_v1';
+var STATUS_CACHE_KEY = 'service_status_v2';
+var STATUS_DETAIL_KEY = 'service_status_detail_v2';
 var STATUS_CACHE_SECONDS = 60;
 var WELCOME_LOGO = 'https://www.gstatic.com/images/icons/material/system/2x/security_black_48dp.png';
 
 function getSettings_() {
+  // The deployment configuration (generated Secrets.js) always wins: a URL saved earlier through
+  // Advanced settings must never override it (a stale saved tunnel URL caused a real outage, and a
+  // user-chosen URL is the F-09 risk). User properties are used only when no deployment config exists.
   var props = PropertiesService.getUserProperties();
   var dev = (typeof DEV_DEFAULTS !== 'undefined') ? DEV_DEFAULTS : {};
   return {
-    url: props.getProperty('BACKEND_URL') || dev.url || '',
-    apiKey: props.getProperty('API_KEY') || dev.apiKey || ''
+    url: dev.url || props.getProperty('BACKEND_URL') || '',
+    apiKey: dev.apiKey || props.getProperty('API_KEY') || '',
+    managed: !!dev.url
   };
 }
 
@@ -29,18 +34,21 @@ function serviceStatus_() {
   var cache = CacheService.getUserCache();
   var cached = cache.get(STATUS_CACHE_KEY);
   if (cached) return cached;
-  var status;
+  var status, detail = '';
   try {
     var resp = UrlFetchApp.fetch(s.url + '/v1/status', {
       headers: { 'X-API-Key': s.apiKey }, muteHttpExceptions: true, followRedirects: false
     });
     var code = resp.getResponseCode();
     status = code === 200 ? 'ready' : code === 401 ? 'key_rejected' : 'unavailable';
+    detail = 'HTTP ' + code;
   } catch (err) {
+    detail = String(err && err.message || err).slice(0, 200);
     // Apps Script refuses URLs outside the manifest's urlFetchWhitelist (F-09): say so explicitly.
     status = /whitelist|allowlist|not allowed|permission/i.test(String(err && err.message)) ? 'blocked' : 'unavailable';
   }
   cache.put(STATUS_CACHE_KEY, status, STATUS_CACHE_SECONDS);
+  cache.put(STATUS_DETAIL_KEY, hostOf_(s.url) + ': ' + detail, STATUS_CACHE_SECONDS);
   return status;
 }
 
@@ -51,6 +59,16 @@ var STATUS_VIEW = {
   blocked: { icon: 'block', color: '#c5221f', title: 'Service URL not permitted', text: 'This add-on only connects to its approved analysis service.' },
   setup: { icon: 'settings', color: '#5f6368', title: 'Setup required', text: "MailLens isn't connected to its analysis service yet." }
 };
+
+function hostOf_(url) {
+  var m = String(url || '').match(/^https:\/\/([^\/:]+)/i);
+  return m ? m[1] : '(no URL)';
+}
+
+/** Short diagnostic shown only when the service isn't ready: which host was tried, and the error. */
+function statusDetail_() {
+  try { return CacheService.getUserCache().get(STATUS_DETAIL_KEY) || ''; } catch (e) { return ''; }
+}
 
 // ------------------------------------------------------------------ Welcome (homepage)
 function buildWelcomeCard_() {
@@ -66,6 +84,10 @@ function buildWelcomeCard_() {
     .addWidget(withIcon_(CardService.newDecoratedText()
       .setText(ltrLines_(['<b><font color="' + view.color + '">' + view.title + '</font></b>', escapeHtml_(view.text)]))
       .setWrapText(true), view.icon, view.title));
+  if (status !== 'ready' && status !== 'setup' && statusDetail_()) {
+    intro.addWidget(CardService.newTextParagraph().setText('<font color="#5f6368">' +
+      ltr_('Details: ' + escapeHtml_(statusDetail_())) + '</font>'));
+  }
   if (status === 'ready') {
     intro.addWidget(withIcon_(CardService.newDecoratedText()
       .setText(ltrLines_(['<b>Open an email to analyze it</b>', 'The result appears here automatically.']))
@@ -129,10 +151,15 @@ function onSaveSettings(e) {
   if (!/^https:\/\/[a-z0-9.-]+(:\d+)?$/i.test(url)) {
     return notify_('The service URL must be an https:// address with no path.');
   }
+  var current = getSettings_();
+  if (current.managed && url !== current.url.replace(/\/+$/, '')) {
+    return notify_('This deployment is locked to its approved analysis service.');
+  }
   var props = PropertiesService.getUserProperties();
-  props.setProperty('BACKEND_URL', url);
+  props.deleteProperty('BACKEND_URL');  // never let a saved URL shadow the deployment config
+  if (!current.managed) props.setProperty('BACKEND_URL', url);
   if (inputs.apiKey) props.setProperty('API_KEY', String(inputs.apiKey).trim());
-  CacheService.getUserCache().remove(STATUS_CACHE_KEY);
+  CacheService.getUserCache().removeAll([STATUS_CACHE_KEY, STATUS_DETAIL_KEY]);
   return CardService.newActionResponseBuilder()
     .setNotification(CardService.newNotification().setText('Saved.'))
     .setNavigation(CardService.newNavigation().updateCard(buildAdvancedSettingsCard_())).build();
@@ -157,4 +184,18 @@ function onOpenDeveloperTools() {
 function notify_(text) {
   return CardService.newActionResponseBuilder()
     .setNotification(CardService.newNotification().setText(text)).build();
+}
+
+/**
+ * Editor-only F-09 check (run from the Apps Script editor: select verifyAllowList, click Run).
+ * Tries a URL that is NOT in the manifest's urlFetchWhitelist and logs whether Google blocked it.
+ * Not reachable from the add-on UI.
+ */
+function verifyAllowList() {
+  try {
+    UrlFetchApp.fetch('https://example.com/', { muteHttpExceptions: true });
+    console.log('F-09 FAIL: request to https://example.com/ was ALLOWED');
+  } catch (err) {
+    console.log('F-09 PASS: request to https://example.com/ was BLOCKED: ' + err.message);
+  }
 }

@@ -85,7 +85,7 @@ const responses = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'r
 
 function load(cs, dev, opts = {}) {
   const props = opts.props || {};
-  const ctx = { CardService: cs, CacheService: { getUserCache: () => ({ put() {}, get: () => null, remove() {} }) },
+  const ctx = { CardService: cs, CacheService: { getUserCache: () => ({ put() {}, get: () => null, remove() {}, removeAll() {} }) },
     PropertiesService: { getUserProperties: () => ({ getProperty: (k) => props[k] || '' }) }, console,
     UrlFetchApp: { fetch: () => { if (opts.statusCode === 'throw') throw new Error('dns'); return { getResponseCode: () => opts.statusCode || 200 }; } } };
   if (dev) ctx.DEV_DEFAULTS = { url: 'https://x', apiKey: 'k', dev: true };
@@ -244,4 +244,14 @@ test('hostile strings in every backend field are escaped before rendering', () =
       assert.ok(!withoutOurTags.includes('<'), `${name}: unescaped markup reached a widget: ${withoutOurTags.slice(0, 120)}`);
     }
   }
+});
+
+test('regression: a stale URL saved in user settings never overrides the deployment config', () => {
+  const { CardService } = strictCardService();
+  const ctx = load(CardService, false, { props: { BACKEND_URL: 'https://old-dead-tunnel.trycloudflare.com', API_KEY: 'old' } });
+  ctx.DEV_DEFAULTS = { url: 'https://current.trycloudflare.com', apiKey: 'current', dev: false };
+  const s = ctx.getSettings_();
+  assert.strictEqual(s.url, 'https://current.trycloudflare.com');
+  assert.strictEqual(s.apiKey, 'current');
+  assert.strictEqual(s.managed, true);
 });

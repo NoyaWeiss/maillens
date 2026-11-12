@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# OPTIONAL and NOT REQUIRED: MailLens runs locally (see README). Kept only as a reference for a
+# possible future cloud deployment; never run as part of setup. Cloud Run deployment was cancelled.
 # Deploy the MailLens backend to Cloud Run (idempotent; safe to re-run for redeploys).
 # Requires: gcloud logged in (gcloud auth login), a project with billing ENABLED BY THE OWNER, Docker.
 # Usage: PROJECT=my-project [REGION=europe-west1] scripts/cloudrun-deploy.sh
