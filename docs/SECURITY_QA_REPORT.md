@@ -177,8 +177,8 @@ Source: backend logs (requests from Google address ranges, scenario labels in de
 
 | Suite | Result |
 |---|---|
-| Backend (pytest) | **224 passed**, 0 failed (after Phase 3b) |
-| Add-on (node --test) | **72 passed**, 0 failed |
+| Backend (pytest) | **226 passed**, 0 failed (final, 2026-11-12) |
+| Add-on (node --test) | **73 passed**, 0 failed (final, 2026-11-12) |
 | Contract (real add-on payload → live backend) | 2/2 paths OK |
 | Public-endpoint checks | healthz 200 · analyze/status without key 401 · docs/openapi 404 · 2 MB 413 |
 
@@ -345,3 +345,40 @@ the author on the 15 **unpublished** local commits before the first push. No pub
 | Decisions on F-18, F-19, F-09 option A | Owner |
 | Backend switched to production mode (F-08) | Just before the demo (it removes the scenario labels used to verify reviews) |
 | Phase 2 visual approvals (Welcome screen; Detailed analysis content proposal) | Owner (kept open; not part of Phase 3) |
+
+
+## 15. Phase 3 close-out (2026-11-12)
+
+### Incidents found during close-out and fixed
+
+| Issue | Root cause | Fix | Verified |
+|---|---|---|---|
+| Gmail showed "Analysis service unavailable" | (1) Cloudflare deleted the quick tunnel overnight. (2) `dev.sh` saved "Binary file matches" instead of the URL. (3) **A URL saved earlier in Advanced settings overrode every new deployment** | Fresh tunnel; `grep -a`; deployment config now always wins over saved settings, plus a regression test | **Real Gmail:** status check 200 and analyses from Google at 11:17 |
+| F-08 backend in dev mode | Developer endpoint and labels enabled | Backend restarted in production mode | Public `/v1/dev/probe-report` returns 404 |
+| F-09 add-on could fetch any URL | No manifest allow-list | Top-level `urlFetchWhitelist` = Gmail API + **exact** backend host, injected per installation at push time; saved URLs can't override the deployment | Accepted by Google's manifest validator and live in the deployed manifest. **Enforcement not directly observed:** run `verifyAllowList` in the Apps Script editor to confirm |
+| F-19 pretext requests | Level-2 request plus weak signals never escalated | Narrow S-P gate: pretext plus explicit concealment plus unfamiliar sender = Suspicious only | Tests; 41 cases: malicious detected 15 → **16**, false positives unchanged (1) |
+
+### Real-Gmail verification (observed, not mocked)
+
+| Check | Result |
+|---|---|
+| Welcome screen "Analysis service ready" | PASS (status checks from Google: 200) |
+| T5 → High risk; Detailed analysis opens | PASS (High via H-B in the log; owner confirmed both) |
+| Backend outage → no verdict; Try again fails while down | PASS (owner observed; the tunnel returned 502) |
+| Recovery → Try again returns the verdict | PASS (analysis from Gmail at 11:34:44 after restart, High via H-B) |
+
+### Final automated results
+- Backend: 226 passed, 1 warning in 0.77s
+- Add-on: ℹ pass 73 ℹ fail 0
+- Contract test: 2/2 paths
+- Clean-clone install test: PASS. Covered a fresh API key (owner key rejected), all suites passing in the clone,
+  a Docker backend in production mode, the reviewer's own tunnel (public status 200, analysis OK), and the per-reviewer allow-list in a dry run.
+
+### Verdict on Phase 3
+**Complete, with documented limitations.** All critical and high items are fixed, and the critical
+real-Gmail checks pass. Remaining, none of them blocking:
+- F-09 enforcement still to be observed once (`verifyAllowList`)
+- F-18 (forwarded-content false positive) and F-20 (instruction in fake quoted history) documented as limitations
+- the occasional Gmail API stall (F-12)
+- quick-tunnel URL changes (reviewers re-run `setup-addon.sh`)
+- Phase 2 visual approvals (Welcome screen, Detailed analysis content proposal) remain open by the owner's decision
