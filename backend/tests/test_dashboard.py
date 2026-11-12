@@ -132,6 +132,7 @@ def test_scan_ticket_is_bound_to_the_session_account():
     assert c.post("/v1/scan/start", json={"ticket": t, "account": other}, headers=KEY).status_code == 403
     assert c.post("/v1/scan/start", json={"ticket": t, "account": acct}).status_code == 401          # API key required
     assert c.post("/v1/scan/start", json={"ticket": t, "account": acct}, headers=KEY).json()["range_seconds"] == 86400
+    assert c.post("/v1/scan/start", json={"ticket": t, "account": acct}, headers=KEY).status_code == 409   # starts once
     analyze(c, acct, "18c3f2a9b7d41e05", subject="already seen")
     known = c.post("/v1/scan/known", json={"ticket": t, "account": acct, "ids": ["18c3f2a9b7d41e05", "18c3f2a9b7d41e06"]}, headers=KEY).json()
     assert known["known"] == ["18c3f2a9b7d41e05"]                                                       # deduplication

@@ -68,7 +68,8 @@ DATA_DIR = Path(os.environ.get("MAILLENS_DATA_DIR", _ROOT / "backend" / "data"))
 DASHBOARD_DIR = Path(os.environ.get("MAILLENS_DASHBOARD_DIR", _ROOT / "dashboard" / "dist"))
 _SECURITY_HEADERS = {
     "Content-Security-Policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; "
-                               "connect-src 'self'; font-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'",
+                               "connect-src 'self'; font-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'; "
+                               "frame-src https://script.google.com https://*.googleusercontent.com",  # inbox scan page (Apps Script)
     "Referrer-Policy": "no-referrer", "X-Content-Type-Options": "nosniff", "X-Frame-Options": "DENY",
     "Cache-Control": "no-store",
 }
@@ -253,7 +254,8 @@ def create_app() -> FastAPI:
     @app.post("/v1/scan/start", dependencies=[Depends(require_key)])
     def scan_start(body: ScanAuth) -> dict:
         _, range_s = _scan_ticket(body)
-        history.update_progress(body.ticket, state="running")
+        if not history.claim_start(body.ticket):
+            raise HTTPException(status.HTTP_409_CONFLICT, "this scan is already running or finished")
         return {"range_seconds": range_s, "limit": SCAN_LIMIT}
 
     @app.post("/v1/scan/known", dependencies=[Depends(require_key)])
@@ -266,6 +268,9 @@ def create_app() -> FastAPI:
         _scan_ticket(body)
         history.update_progress(body.ticket, state=body.state, total=body.total, done=body.done,
                                 skipped=body.skipped, failed=body.failed, error=body.error)
+        # Counts and the first Apps Script error message (step + exception text), never email content.
+        log.info("scan progress state=%s total=%d analyzed=%d skipped=%d failed=%d error=%s", body.state, body.total,
+                 body.done, body.skipped, body.failed, re.sub(r"[^\x20-\x7e]", "?", body.error)[:160] or "-")
         return {"status": "ok"}
 
     @app.delete("/v1/dashboard/history")

@@ -19,9 +19,12 @@ var SCAN_ID_RE = /^[A-Za-z0-9]{6,64}$/;
 
 function doGet(e) {
   var t = String((e && e.parameter && e.parameter.t) || '');
-  // XFrameOptionsMode has only ALLOWALL and DEFAULT. DEFAULT (left as is) already sends X-Frame-Options,
-  // so other sites can't frame this page. (DENY doesn't exist; passing it failed with "mode cannot be empty".)
-  return HtmlService.createHtmlOutput(scanPageHtml_(SCAN_TICKET_RE.test(t) ? t : '')).setTitle('MailLens · Scan inbox');
+  // ALLOWALL lets the dashboard run this page in an invisible frame, so the scan stays inside Overview.
+  // Framing grants nothing by itself: the page acts only with a valid, short-lived ticket, and the backend
+  // accepts it only from the Google account the ticket belongs to (its private account key).
+  // (XFrameOptionsMode has only ALLOWALL and DEFAULT; the earlier DENY value doesn't exist.)
+  return HtmlService.createHtmlOutput(scanPageHtml_(SCAN_TICKET_RE.test(t) ? t : '')).setTitle('MailLens · Scan inbox')
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
 function scanStart(ticket) {
@@ -54,8 +57,10 @@ function scanBatch(ticket, ids, totals) {
       callAnalyze_(ctx.settings, payload, '', String(id), Number(m.internalDate) || null);
       totals.done++;
     } catch (err) {
-      console.warn('scan: message failed: ' + String(err && err.message || err).slice(0, 120));
+      var why = String(err && err.message || err).replace(/\s+/g, ' ').slice(0, 160);
+      console.warn('scan: message failed: ' + why);
       totals.failed++;
+      if (!totals.firstError) totals.firstError = why;  // reported to the dashboard and backend log
     }
   });
   scanReport_(ctx, totals);
@@ -80,7 +85,7 @@ function scanContext_(ticket) {
 function scanReport_(ctx, totals) {
   try {
     scanPost_(ctx, '/v1/scan/progress', { state: totals.state, total: totals.total, done: totals.done,
-      skipped: totals.skipped, failed: totals.failed, error: totals.error || '' });
+      skipped: totals.skipped, failed: totals.failed, error: totals.error || totals.firstError || '' });
   } catch (e) { /* progress is best effort; the dashboard times out on its own */ }
 }
 
@@ -95,6 +100,7 @@ function scanPost_(ctx, path, body) {
   if (code === 403) {
     throw new Error('This scan was started from a dashboard for a different Google account. Switch to the same account and try again.');
   }
+  if (code === 409) throw new Error('This scan is already running from the dashboard.');
   if (code !== 200) throw new Error('The MailLens backend is unavailable (HTTP ' + code + ').');
   return JSON.parse(resp.getContentText());
 }
@@ -109,9 +115,9 @@ function apiMessageAdapter_(m) {
     if (part.filename) {
       attachments.push({ name: part.filename, content_type: mime, size: Number(body.size) || 0 });
     } else if (body.data && mime === 'text/html' && !html) {
-      html = decodePart_(body.data);
+      html = decodePart_(body.data, partCharset_(part));
     } else if (body.data && mime === 'text/plain' && !text) {
-      text = decodePart_(body.data);
+      text = decodePart_(body.data, partCharset_(part));
     }
     (part.parts || []).forEach(walk);
   })(m.payload);
@@ -130,8 +136,22 @@ function apiMessageAdapter_(m) {
   };
 }
 
-function decodePart_(data) {
-  return Utilities.newBlob(Utilities.base64DecodeWebSafe(String(data))).getDataAsString('UTF-8');
+/**
+ * The ADVANCED Gmail service returns part bodies (body.data) as a byte array, not the base64url text the
+ * REST API returns. Treating it as text made every scanned message fail. Accept both forms; decode with
+ * the part's declared charset (UTF-8 if none or unsupported).
+ */
+function decodePart_(data, charset) {
+  var bytes = Array.isArray(data) || (data && typeof data === 'object' && typeof data.length === 'number')
+    ? data : Utilities.base64DecodeWebSafe(String(data));
+  var blob = Utilities.newBlob(bytes);
+  try { return blob.getDataAsString(charset || 'UTF-8'); } catch (e) { return blob.getDataAsString('UTF-8'); }
+}
+
+function partCharset_(part) {
+  var ct = ((part.headers || []).filter(function (h) { return String(h.name).toLowerCase() === 'content-type'; })[0] || {}).value || '';
+  var m = /charset="?([A-Za-z0-9._-]+)"?/i.exec(String(ct));
+  return m ? m[1] : '';
 }
 
 function scanPageHtml_(ticket) {
@@ -146,9 +166,9 @@ function scanPageHtml_(ticket) {
     'stop.onclick=function(){cancelled=true;stop.disabled=true;msg.textContent="Cancelling after the current emails…";};' +
     'function fail(e){msg.className="err";msg.textContent=(e&&e.message)||String(e);if(T)google.script.run.scanFinish(T,{total:0,done:0,skipped:0,failed:0},msg.textContent);}' +
     'function show(t){var n=t.done+t.failed+t.skipped;fill.style.width=(t.total?Math.round(100*n/t.total):100)+"%";' +
-    'msg.textContent="Analyzed "+t.done+" of "+(t.total-t.skipped)+" new emails"+(t.skipped?" · "+t.skipped+" already analyzed":"")+(t.failed?" · "+t.failed+" failed":"");}' +
+    'msg.textContent=t.done+" analyzed · "+t.failed+" failed · "+Math.max(0,t.total-t.skipped-t.done-t.failed)+" remaining";}' +
     'function next(p,t){if(cancelled){google.script.run.withSuccessHandler(function(){msg.textContent="Scan cancelled. Emails already analyzed are kept.";stop.hidden=true;}).scanFinish(T,t,"Cancelled");return;}' +
-    'if(!p.length){stop.hidden=true;google.script.run.withSuccessHandler(function(t){show(t);msg.textContent+=". Done: you can close this tab and return to the dashboard.";}).withFailureHandler(fail).scanFinish(T,t,"");return;}' +
+    'if(!p.length){stop.hidden=true;google.script.run.withSuccessHandler(function(t){show(t);msg.textContent+=". Finished: return to the dashboard.";}).withFailureHandler(fail).scanFinish(T,t,"");return;}' +
     'google.script.run.withSuccessHandler(function(t2){show(t2);next(p.slice(5),t2);}).withFailureHandler(fail).scanBatch(T,p.slice(0,5),t);}' +
     'if(!T){fail("This scan link is invalid. Start the scan again from the dashboard.");}else{' +
     'google.script.run.withSuccessHandler(function(r){show(r.totals);next(r.pending,r.totals);}).withFailureHandler(fail).scanStart(T);}' +

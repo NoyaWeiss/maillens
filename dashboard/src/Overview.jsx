@@ -102,64 +102,104 @@ function Stat({ label, value, tone }) {
   );
 }
 
-/** Opens the user's own Apps Script scan page (existing Gmail permission) and tracks its progress. */
+/**
+ * Inbox scan, kept inside Overview. Gmail can only be read by code running under the user's own Google
+ * sign-in, so the scan runs in the user's Apps Script project, loaded in an invisible frame. If the
+ * browser blocks Google's sign-in inside frames, or Google needs a consent click, a small Google window
+ * is offered instead and closed automatically when the scan finishes.
+ */
 function ScanInbox({ mode, available, range, onFinished }) {
   const [scan, setScan] = useState({ status: 'idle' });
   const timer = useRef(null);
+  const win = useRef(null);
   useEffect(() => () => clearTimeout(timer.current), []);
 
   if (mode !== 'account') return null;
-  if (!available) return <span className="muted small" title="Run scripts/push-addon.sh to enable the scan page.">Inbox scan isn't set up</span>;
+  if (!available) return <span className="muted small" title="Run scripts/push-addon.sh to enable inbox scanning.">Inbox scan isn't set up</span>;
 
-  const poll = (ticket, started) => {
+  const finish = (next) => {
+    try { if (win.current && !win.current.closed) win.current.close(); } catch { /* ignore */ }
+    win.current = null;
+    setScan(next);
+    onFinished();
+  };
+
+  const poll = (ticket, url, started, lastDone) => {
     timer.current = setTimeout(async () => {
       try {
         const p = await api.scanStatus(ticket);
         const waited = Date.now() - started;
-        if (p.state === 'done') { setScan({ status: 'done', p }); onFinished(); return; }
-        if (p.state === 'error') { setScan({ status: 'error', message: p.error || 'The scan stopped.' }); return; }
-        if (p.state === 'cancelled') { setScan({ status: 'error', message: `Scan cancelled after ${p.done} emails.` }); onFinished(); return; }
-        if (waited > 15 * 60 * 1000) { setScan({ status: 'error', message: 'The scan timed out.' }); return; }
-        setScan({ status: p.state === 'running' ? 'running' : 'waiting', p, slow: p.state === 'waiting' && waited > 60000 });
-        poll(ticket, started);
-      } catch (e) { setScan({ status: 'error', message: e.message }); }
-    }, 2000);
+        if (p.done > lastDone) onFinished(); // new results appear in Overview while the scan runs
+        if (['done', 'cancelled', 'error'].includes(p.state)) { finish({ status: p.state, p, url }); return; }
+        if (waited > 15 * 60 * 1000) { finish({ status: 'error', p: { ...p, error: 'The scan timed out.' }, url }); return; }
+        setScan((s) => ({ ...s, status: p.state === 'running' ? 'running' : 'waiting', p, needsWindow: p.state === 'waiting' && waited > 12000 }));
+        poll(ticket, url, started, p.done);
+      } catch (e) { setScan({ status: 'error', p: { error: e.message } }); }
+    }, 1500);
   };
 
   const start = async () => {
-    const tab = window.open('about:blank', '_blank'); // opened synchronously so the browser doesn't block it
+    clearTimeout(timer.current);
     setScan({ status: 'starting' });
     try {
       const r = await api.startScan(range);
-      if (tab) { tab.opener = null; tab.location.href = r.url; }
-      setScan({ status: 'waiting', url: tab ? null : r.url });
-      poll(r.ticket, Date.now());
-    } catch (e) {
-      if (tab) tab.close();
-      setScan({ status: 'error', message: e.message });
-    }
+      setScan({ status: 'waiting', url: r.url, frame: true });
+      poll(r.ticket, r.url, Date.now(), 0);
+    } catch (e) { setScan({ status: 'error', p: { error: e.message } }); }
   };
 
-  const busy = ['starting', 'waiting', 'running'].includes(scan.status);
+  const openWindow = () => {
+    win.current = window.open(scan.url, 'maillens-scan', 'popup,width=480,height=560');
+    setScan((s) => ({ ...s, frame: false, needsWindow: false, windowOpen: true }));
+  };
+
   const p = scan.p || {};
-  const processed = (p.done || 0) + (p.failed || 0) + (p.skipped || 0);
+  const newCount = Math.max(0, (p.total || 0) - (p.skipped || 0));
+  const remaining = Math.max(0, newCount - (p.done || 0) - (p.failed || 0));
+  const busy = ['starting', 'waiting', 'running'].includes(scan.status);
+  const finished = ['done', 'cancelled', 'error'].includes(scan.status);
+  const allFailed = finished && p.failed > 0 && !p.done;
+
+  let line = null;
+  if (scan.status === 'starting' || (scan.status === 'waiting' && !scan.needsWindow)) line = <span className="scan-msg"><span className="spinner sm" />Connecting to Gmail…</span>;
+  if (scan.status === 'waiting' && scan.needsWindow) {
+    line = <span className="scan-msg">Google needs to confirm access. <button type="button" className="link" onClick={openWindow}>Continue in a Google window</button></span>;
+  }
+  if (scan.status === 'running') {
+    line = (
+      <span className="scan-msg">
+        <span className="scan-bar" aria-hidden="true"><span style={{ width: `${newCount ? (100 * (newCount - remaining)) / newCount : 0}%` }} /></span>
+        {p.total} found · {p.done} analyzed{p.failed ? ` · ${p.failed} failed` : ''} · {remaining} left
+      </span>
+    );
+  }
+  if (finished) {
+    const summary = `${p.total || 0} found · ${p.done || 0} analyzed${p.skipped ? ` · ${p.skipped} already analyzed` : ''}${p.failed ? ` · ${p.failed} failed` : ''}`;
+    const tone = scan.status === 'done' && !p.failed ? 'ok' : 'err';
+    const title = scan.status === 'cancelled' ? 'Scan cancelled' : scan.status === 'error' ? 'Scan stopped'
+      : allFailed ? 'Scan finished, but no emails could be analyzed' : p.failed ? 'Scan finished with problems' : 'Scan complete';
+    line = (
+      <span className={`scan-msg ${tone}`} role={tone === 'err' ? 'alert' : 'status'}>
+        <span><b>{title}</b> · {summary}{p.error && tone === 'err' ? <span className="scan-err"> ({p.error})</span> : null}</span>
+      </span>
+    );
+  }
+
   return (
     <div className="scan" aria-live="polite">
-      {scan.status === 'waiting' ? <span className="scan-msg">{scan.url
-        ? <a href={scan.url} target="_blank" rel="noopener noreferrer">Open the scan page</a>
-        : scan.slow ? 'Continue in the Google tab (approve access if asked)' : 'Starting in a new tab…'}</span> : null}
-      {scan.status === 'running' ? (
-        <span className="scan-msg"><span className="scan-bar"><span style={{ width: `${p.total ? (100 * processed) / p.total : 5}%` }} /></span>{processed}/{p.total}</span>
-      ) : null}
-      {scan.status === 'done' ? <span className="scan-msg ok">Scanned {p.total}: {p.done} new{p.skipped ? `, ${p.skipped} already analyzed` : ''}{p.failed ? `, ${p.failed} failed` : ''}</span> : null}
-      {scan.status === 'error' ? <span className="scan-msg err" role="alert">{scan.message}</span> : null}
+      {line}
       <span className="scan-action">
-        <button type="button" className="btn btn-primary" onClick={start} disabled={busy}>{busy ? 'Scanning…' : 'Scan inbox'}</button>
+        <button type="button" className={`btn ${finished && tone_(scan, p) ? 'btn-secondary' : 'btn-primary'}`} onClick={start} disabled={busy}>
+          {busy ? 'Scanning…' : finished && (p.failed || scan.status !== 'done') ? (p.failed ? 'Retry failed' : 'Scan again') : 'Scan inbox'}
+        </button>
         <span className="scan-hint">Scans emails received in the {RANGES[range].label} (up to 50).</span>
       </span>
+      {busy && scan.frame && scan.url ? <iframe className="scan-frame" title="MailLens inbox scan" src={scan.url} /> : null}
     </div>
   );
 }
+
+const tone_ = (scan, p) => scan.status !== 'done' || p.failed;
 
 function ClearHistory({ onClear }) {
   const [confirming, setConfirming] = useState(false);

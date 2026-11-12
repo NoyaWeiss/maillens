@@ -143,6 +143,15 @@ class History:
             return None
         return t[0], t[1]
 
+    def claim_start(self, ticket: str) -> bool:
+        """A ticket starts one scan only (the inline frame and a fallback window can't both run it)."""
+        with self._lock:
+            p = self._progress.get(ticket)
+            if not p or p["state"] != "waiting":
+                return False
+            p["state"] = "running"
+            return True
+
     def update_progress(self, ticket: str, **fields) -> None:
         with self._lock:
             if ticket in self._progress:
