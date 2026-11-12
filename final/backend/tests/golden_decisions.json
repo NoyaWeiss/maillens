@@ -1,0 +1,452 @@
+{
+ "h2": {
+  "also_observed": [],
+  "checks": {
+   "S1": "ran",
+   "S10": "not_applicable",
+   "S11": "not_applicable",
+   "S12": "ran",
+   "S13": "ran",
+   "S14": "ran",
+   "S2": "ran",
+   "S3": "ran",
+   "S4": "ran",
+   "S5": "ran",
+   "S6": "ran",
+   "S7": "ran",
+   "S9": "not_applicable"
+  },
+  "confidence": "Full",
+  "coverage": [
+   10,
+   10
+  ],
+  "findings": [],
+  "gate": null,
+  "pathway": null,
+  "request_level": 0,
+  "score": 8,
+  "vector": "D0 \u00b7 A0 \u00b7 E0 \u00b7 P0 \u00b7 N0",
+  "verdict": "LOW"
+ },
+ "h4": {
+  "also_observed": [],
+  "checks": {
+   "S1": "ran",
+   "S10": "not_applicable",
+   "S11": "ran",
+   "S12": "ran",
+   "S13": "ran",
+   "S14": "ran",
+   "S2": "ran",
+   "S3": "ran",
+   "S4": "ran",
+   "S5": "ran",
+   "S6": "ran",
+   "S7": "ran",
+   "S9": "not_applicable"
+  },
+  "confidence": "Full",
+  "coverage": [
+   11,
+   11
+  ],
+  "findings": [],
+  "gate": null,
+  "pathway": null,
+  "request_level": 0,
+  "score": 8,
+  "vector": "D0 \u00b7 A0 \u00b7 E0 \u00b7 P0 \u00b7 N0",
+  "verdict": "LOW"
+ },
+ "t1": {
+  "also_observed": [],
+  "checks": {
+   "S1": "ran",
+   "S10": "ran",
+   "S11": "not_applicable",
+   "S12": "ran",
+   "S13": "ran",
+   "S14": "ran",
+   "S2": "ran",
+   "S3": "ran",
+   "S4": "ran",
+   "S5": "ran",
+   "S6": "ran",
+   "S7": "ran",
+   "S9": "ran"
+  },
+  "confidence": "Full",
+  "coverage": [
+   12,
+   12
+  ],
+  "findings": [],
+  "gate": null,
+  "pathway": null,
+  "request_level": 1,
+  "score": 8,
+  "vector": "D0 \u00b7 A1 \u00b7 E0 \u00b7 P0 \u00b7 N1",
+  "verdict": "LOW"
+ },
+ "t1_no_relationship": {
+  "also_observed": [],
+  "checks": {
+   "S1": "ran",
+   "S10": "ran",
+   "S11": "not_applicable",
+   "S12": "ran",
+   "S13": "ran",
+   "S14": "ran",
+   "S2": "ran",
+   "S3": "ran",
+   "S4": "unavailable",
+   "S5": "unavailable",
+   "S6": "unavailable",
+   "S7": "ran",
+   "S9": "ran"
+  },
+  "confidence": "Limited",
+  "coverage": [
+   9,
+   12
+  ],
+  "findings": [],
+  "gate": null,
+  "pathway": null,
+  "request_level": 1,
+  "score": 8,
+  "vector": "D0 \u00b7 A1 \u00b7 E0 \u00b7 P0 \u00b7 N?",
+  "verdict": "LOW"
+ },
+ "t2": {
+  "also_observed": [],
+  "checks": {
+   "S1": "ran",
+   "S10": "ran",
+   "S11": "not_applicable",
+   "S12": "ran",
+   "S13": "ran",
+   "S14": "ran",
+   "S2": "ran",
+   "S3": "ran",
+   "S4": "ran",
+   "S5": "ran",
+   "S6": "ran",
+   "S7": "ran",
+   "S9": "ran"
+  },
+  "confidence": "Full",
+  "coverage": [
+   12,
+   12
+  ],
+  "findings": [],
+  "gate": null,
+  "pathway": null,
+  "request_level": 2,
+  "score": 8,
+  "vector": "D0 \u00b7 A2 \u00b7 E0 \u00b7 P0 \u00b7 N1",
+  "verdict": "LOW"
+ },
+ "t3": {
+  "also_observed": [],
+  "checks": {
+   "S1": "ran",
+   "S10": "ran",
+   "S11": "not_applicable",
+   "S12": "ran",
+   "S13": "ran",
+   "S14": "ran",
+   "S2": "ran",
+   "S3": "ran",
+   "S4": "ran",
+   "S5": "ran",
+   "S6": "ran",
+   "S7": "ran",
+   "S9": "ran"
+  },
+  "confidence": "Full",
+  "coverage": [
+   12,
+   12
+  ],
+  "findings": [],
+  "gate": null,
+  "pathway": null,
+  "request_level": 0,
+  "score": 8,
+  "vector": "D0 \u00b7 A0 \u00b7 E0 \u00b7 P0 \u00b7 N1",
+  "verdict": "LOW"
+ },
+ "t4b": {
+  "also_observed": [],
+  "checks": {
+   "S1": "ran",
+   "S10": "not_applicable",
+   "S11": "not_applicable",
+   "S12": "ran",
+   "S13": "ran",
+   "S14": "ran",
+   "S2": "ran",
+   "S3": "ran",
+   "S4": "ran",
+   "S5": "ran",
+   "S6": "ran",
+   "S7": "ran",
+   "S9": "not_applicable"
+  },
+  "confidence": "Full",
+  "coverage": [
+   10,
+   10
+  ],
+  "findings": [
+   [
+    "S4",
+    "IDENTITY",
+    "domain:gmail.example",
+    2,
+    "MAILBOX"
+   ]
+  ],
+  "gate": "H-B",
+  "pathway": "Deception",
+  "request_level": 2,
+  "score": 75,
+  "vector": "D2 \u00b7 A2 \u00b7 E1 \u00b7 P0 \u00b7 N1",
+  "verdict": "HIGH"
+ },
+ "t5": {
+  "also_observed": [],
+  "checks": {
+   "S1": "ran",
+   "S10": "not_applicable",
+   "S11": "not_applicable",
+   "S12": "ran",
+   "S13": "ran",
+   "S14": "ran",
+   "S2": "ran",
+   "S3": "ran",
+   "S4": "ran",
+   "S5": "ran",
+   "S6": "ran",
+   "S7": "ran",
+   "S9": "not_applicable"
+  },
+  "confidence": "Full",
+  "coverage": [
+   10,
+   10
+  ],
+  "findings": [
+   [
+    "S2",
+    "IDENTITY",
+    "domain:acmesupply.example",
+    2,
+    "OBSERVED"
+   ]
+  ],
+  "gate": "H-B",
+  "pathway": "Deception",
+  "request_level": 3,
+  "score": 75,
+  "vector": "D2 \u00b7 A3 \u00b7 E1 \u00b7 P0 \u00b7 N0",
+  "verdict": "HIGH"
+ },
+ "t6": {
+  "also_observed": [],
+  "checks": {
+   "S1": "ran",
+   "S10": "not_applicable",
+   "S11": "not_applicable",
+   "S12": "ran",
+   "S13": "ran",
+   "S14": "ran",
+   "S2": "ran",
+   "S3": "ran",
+   "S4": "ran",
+   "S5": "ran",
+   "S6": "ran",
+   "S7": "ran",
+   "S9": "not_applicable"
+  },
+  "confidence": "Full",
+  "coverage": [
+   10,
+   10
+  ],
+  "findings": [],
+  "gate": "S-A",
+  "pathway": "Request in context",
+  "request_level": 3,
+  "score": 40,
+  "vector": "D0 \u00b7 A3 \u00b7 E0 \u00b7 P0 \u00b7 N0",
+  "verdict": "SUSPICIOUS"
+ },
+ "t6_no_relationship": {
+  "also_observed": [],
+  "checks": {
+   "S1": "ran",
+   "S10": "not_applicable",
+   "S11": "not_applicable",
+   "S12": "ran",
+   "S13": "ran",
+   "S14": "ran",
+   "S2": "ran",
+   "S3": "ran",
+   "S4": "unavailable",
+   "S5": "unavailable",
+   "S6": "unavailable",
+   "S7": "ran",
+   "S9": "not_applicable"
+  },
+  "confidence": "Limited",
+  "coverage": [
+   7,
+   10
+  ],
+  "findings": [],
+  "gate": "S-A",
+  "pathway": "Request in context",
+  "request_level": 3,
+  "score": 40,
+  "vector": "D0 \u00b7 A3 \u00b7 E0 \u00b7 P0 \u00b7 N?",
+  "verdict": "SUSPICIOUS"
+ },
+ "t7": {
+  "also_observed": [
+   [
+    "S4",
+    "domain:acmesupp1y.example",
+    2
+   ]
+  ],
+  "checks": {
+   "S1": "ran",
+   "S10": "not_applicable",
+   "S11": "ran",
+   "S12": "ran",
+   "S13": "ran",
+   "S14": "ran",
+   "S2": "ran",
+   "S3": "ran",
+   "S4": "ran",
+   "S5": "ran",
+   "S6": "ran",
+   "S7": "ran",
+   "S9": "not_applicable"
+  },
+  "confidence": "Full",
+  "coverage": [
+   11,
+   11
+  ],
+  "findings": [
+   [
+    "S11",
+    "PAYLOAD",
+    "file:remittance_inv-2207.html",
+    2,
+    "OBSERVED"
+   ],
+   [
+    "S5",
+    "IDENTITY",
+    "domain:acmesupp1y.example",
+    3,
+    "MAILBOX"
+   ]
+  ],
+  "gate": "H-A",
+  "pathway": "Deception",
+  "request_level": 0,
+  "score": 79,
+  "vector": "D3 \u00b7 A0 \u00b7 E2 \u00b7 P0 \u00b7 N1",
+  "verdict": "HIGH"
+ },
+ "t8": {
+  "also_observed": [],
+  "checks": {
+   "S1": "ran",
+   "S10": "ran",
+   "S11": "not_applicable",
+   "S12": "ran",
+   "S13": "ran",
+   "S14": "ran",
+   "S2": "ran",
+   "S3": "ran",
+   "S4": "ran",
+   "S5": "ran",
+   "S6": "ran",
+   "S7": "ran",
+   "S9": "ran"
+  },
+  "confidence": "Full",
+  "coverage": [
+   12,
+   12
+  ],
+  "findings": [
+   [
+    "S12",
+    "PAYLOAD",
+    "body",
+    3,
+    "OBSERVED"
+   ],
+   [
+    "S9",
+    "DEST",
+    "domain:northwind-verify.example",
+    2,
+    "OBSERVED"
+   ]
+  ],
+  "gate": "H-A",
+  "pathway": "Deception",
+  "request_level": 2,
+  "score": 79,
+  "vector": "D3 \u00b7 A2 \u00b7 E2 \u00b7 P1 \u00b7 N1",
+  "verdict": "HIGH"
+ },
+ "t9": {
+  "also_observed": [],
+  "checks": {
+   "S1": "unavailable",
+   "S10": "ran",
+   "S11": "not_applicable",
+   "S12": "ran",
+   "S13": "ran",
+   "S14": "ran",
+   "S2": "ran",
+   "S3": "ran",
+   "S4": "ran",
+   "S5": "ran",
+   "S6": "ran",
+   "S7": "ran",
+   "S9": "ran"
+  },
+  "confidence": "Limited",
+  "coverage": [
+   11,
+   12
+  ],
+  "findings": [
+   [
+    "S3",
+    "IDENTITY",
+    "domain:mailbox-support.example",
+    1,
+    "OBSERVED"
+   ]
+  ],
+  "gate": "INC",
+  "pathway": null,
+  "request_level": 2,
+  "score": null,
+  "vector": "D1 \u00b7 A2 \u00b7 E0 \u00b7 P0 \u00b7 N1",
+  "verdict": "INCONCLUSIVE"
+ }
+}

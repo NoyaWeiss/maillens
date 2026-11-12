@@ -1,0 +1,23 @@
+[project]
+name = "maillens-backend"
+version = "0.1.0"
+description = "MailLens analysis backend: stateless, deterministic email risk scoring"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.162.4",
+    "publicsuffixlist>=1.1.2.20261109",
+    "pydantic>=2.14.3",
+    "uvicorn[standard]>=0.54.0",
+]
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "pytest>=9.2.0",
+]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

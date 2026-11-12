@@ -1,0 +1,20 @@
+# Secrets
+.env
+*.env
+.clasprc.json
+# Python
+__pycache__/
+.venv/
+.pytest_cache/
+# Assignment source documents (not for the public repo)
+Home Assignment*.pdf
+MailLens.docx
+.DS_Store
+# Local runtime
+.run/
+# Generated per-developer add-on config (contains the API key) and clasp project binding
+addon/Secrets.js
+.clasp.json
+backend/data/
+dashboard/node_modules/
+dashboard/dist/

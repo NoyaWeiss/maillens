@@ -1,0 +1,52 @@
+{
+  "timeZone": "Etc/UTC",
+  "runtimeVersion": "V8",
+  "exceptionLogging": "STACKDRIVER",
+  "oauthScopes": [
+    "https://www.googleapis.com/auth/gmail.addons.execute",
+    "https://www.googleapis.com/auth/gmail.addons.current.message.readonly",
+    "https://www.googleapis.com/auth/gmail.readonly",
+    "https://www.googleapis.com/auth/script.external_request",
+    "https://www.googleapis.com/auth/script.storage"
+  ],
+  "dependencies": {
+    "enabledAdvancedServices": [
+      {
+        "userSymbol": "Gmail",
+        "serviceId": "gmail",
+        "version": "v1"
+      }
+    ]
+  },
+  "addOns": {
+    "common": {
+      "name": "MailLens",
+      "logoUrl": "https://www.gstatic.com/images/icons/material/system/2x/security_black_48dp.png",
+      "universalActions": [
+        {
+          "label": "Advanced settings",
+          "runFunction": "onSettingsAction"
+        }
+      ],
+      "homepageTrigger": {
+        "runFunction": "onHomepage",
+        "enabled": true
+      }
+    },
+    "gmail": {
+      "contextualTriggers": [
+        {
+          "unconditional": {},
+          "onTriggerFunction": "onGmailMessage"
+        }
+      ]
+    }
+  },
+  "urlFetchWhitelist": [
+    "https://gmail.googleapis.com/"
+  ],
+  "webapp": {
+    "executeAs": "USER_ACCESSING",
+    "access": "MYSELF"
+  }
+}
