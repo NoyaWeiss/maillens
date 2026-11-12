@@ -2,7 +2,7 @@
  * Rendering: Phase 2 v3 (docs/UI_PROPOSAL.md, approved structure).
  *
  * Main card, fixed order: Risk assessment / Why ... / What could happen? / What should you do? /
- * [View detailed analysis] Re-analyze. Headings adapt to the verdict.
+ * [View detailed analysis] [View full dashboard]. Headings adapt to the verdict.
  *
  * Text direction (owner-selected Variant C, verified in Hebrew Gmail): CardService has no dir or
  * alignment control, so every English line is wrapped in a Unicode isolate (LRI U+2066 ... PDI U+2069)
@@ -84,13 +84,12 @@ function buildResultCard_(r, messageId, granted, historyId) {
 
   if (granted && !hasMailboxAccess_(granted)) card.addSection(mailboxAccessSection_());
 
-  // 5. View detailed analysis (tonal) · Re-analyze (borderless, visually secondary)
+  // 5. View detailed analysis (tonal), then View full dashboard
   card.addSection(CardService.newCardSection().addWidget(CardService.newButtonSet()
     .addButton(CardService.newTextButton().setText(ltr_('View detailed analysis'))
       .setTextButtonStyle(CardService.TextButtonStyle.FILLED_TONAL)
       .setOnClickAction(CardService.newAction().setFunctionName('onShowTechnical')
-        .setParameters({ requestId: String(r.request_id), messageId: String(messageId) })))
-    .addButton(reanalyzeButton_(messageId, CardService.TextButtonStyle.BORDERLESS, 'Re-analyze')))
+        .setParameters({ requestId: String(r.request_id), messageId: String(messageId) }))))
     // View full dashboard directly below View detailed analysis (same navy button as on the Home screen).
     .addWidget(dashboardButtonSet_(historyId || messageId)));
   return card.build();
@@ -172,7 +171,7 @@ function reanalyzeButton_(messageId, style, text) {
 // ------------------------------------------------------------------ detailed analysis (v4, approved)
 function onShowTechnical(e) {
   var raw = CacheService.getUserCache().get('result_' + e.parameters.requestId);
-  if (!raw) return notify_('Details expired. Use Re-analyze to refresh them.');
+  if (!raw) return notify_('Details expired. Close and reopen the email to refresh them.');
   var card = buildTechnicalCard_(JSON.parse(raw), e.parameters.messageId);
   return CardService.newActionResponseBuilder().setNavigation(CardService.newNavigation().pushCard(card)).build();
 }

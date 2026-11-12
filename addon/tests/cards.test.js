@@ -142,7 +142,7 @@ for (const [name, r] of Object.entries(responses)) {
         const last = main.sections[main.sections.length - 1].widgets[0];
         assert.strictEqual(last.kind, 'ButtonSet');
         assert.strictEqual(last.buttons[0].style, 'FILLED_TONAL');
-        assert.strictEqual(last.buttons[1].style, 'BORDERLESS');
+        assert.strictEqual(last.buttons.length, 1, 'no Re-analyze button');
         assert.ok(!/@|https?:\/\/|hxxp/.test(mainText(main)), `${name}: raw address or URL on main card`);
 
         const techHeadings = tech.sections.map(firstText);

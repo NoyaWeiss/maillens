@@ -42,7 +42,7 @@ export default function App() {
       const d = await api.emails();
       setAccount({ status: 'ready', emails: d.emails, context: session.context || d.context, label: d.account_label || session.label,
         scan: !!(d.scan_available ?? session.scan), now: d.now });
-      if (fresh && session.context) go('overview', session.context); // opened from an email: show its assessment
+      if (fresh) go('overview'); // every Gmail launch lands on Overview → all emails (the originating email is marked in the list)
     } catch (e) {
       if (e instanceof ApiError && e.status === 401) setAccount({ status: 'expired' });
       else setAccount({ status: 'error', message: e.message });
