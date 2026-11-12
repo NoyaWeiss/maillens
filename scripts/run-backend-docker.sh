@@ -18,12 +18,11 @@ if docker container inspect "$NAME" >/dev/null 2>&1; then
 fi
 if docker volume inspect "$VOL" >/dev/null 2>&1; then
   [ "$(docker volume inspect -f '{{index .Labels "maillens.root"}}' "$VOL" 2>/dev/null)" = "$ROOT" ] || other "volume '$VOL'"
-else
-  docker volume create --label "maillens.root=$ROOT" "$VOL" >/dev/null
 fi
 docker build -q -f "$ROOT/backend/Dockerfile" -t maillens-backend "$ROOT" >/dev/null
 docker rm -f "$NAME" >/dev/null 2>&1 || true   # only ever this checkout's own container (checked above)
 curl -s -o /dev/null -m 2 "http://127.0.0.1:$PORT/" && other "port $PORT (already in use)"
+docker volume inspect "$VOL" >/dev/null 2>&1 || docker volume create --label "maillens.root=$ROOT" "$VOL" >/dev/null
 # Bound to localhost only: the public HTTPS entry point is your own tunnel (scripts/start-tunnel.sh).
 docker run -d --name "$NAME" --label "maillens.root=$ROOT" --restart unless-stopped -p "127.0.0.1:$PORT:8080" --env-file "$ENV" -v "$VOL":/data maillens-backend >/dev/null
 for _ in $(seq 1 20); do curl -fs http://127.0.0.1:${MAILLENS_PORT:-8787}/healthz >/dev/null 2>&1 && break; sleep 1; done
