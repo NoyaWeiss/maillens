@@ -77,4 +77,4 @@ and the retry loop is gone.
 - The first email after the cache expires pays the relationship build (one list call plus up to
   100 header fetches, done in parallel); not yet measured on a large mailbox.
 - The backend currently runs behind a Cloudflare quick tunnel; its URL changes on restart and it
-  has no uptime guarantee. See [HOSTING.md](HOSTING.md).
+  has no uptime guarantee (cloud hosting is out of scope; see the README).

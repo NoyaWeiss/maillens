@@ -182,5 +182,4 @@ demo/ seeder/  Synthetic demo mailbox
 scripts/    Setup and run scripts
 eval/       Benchmarks (v4 is current), metrics.json, reproduce.py
 docs/       Evaluation, security, testing and design documents
-final/      Clean release export of the above (scripts/make-release.sh)
 ```

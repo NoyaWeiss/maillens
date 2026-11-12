@@ -1,3 +1,0 @@
-schema-valid 200/200; nearest-neighbour similarity to v1+v2+v3: max 0.74, median 0.30, >0.6: 1
-Malicious difficulty {'easy': 25, 'medium': 48, 'hard': 27} | origin {'v1': 50, 'v2': 20, 'v3': 15, 'novel': 15} | families 20
-Legitimate difficulty {'medium': 45, 'easy': 30, 'hard': 25} | origin {'v1': 35, 'v2': 30, 'v3': 25, 'novel': 10} | families 20

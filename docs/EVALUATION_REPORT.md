@@ -6,6 +6,10 @@
 >
 > History: [v3](EVALUATION_REPORT_v3.md) · [v2](EVALUATION_REPORT_v2.md) · [v1](EVALUATION_REPORT_v1.md) ·
 > [retrospective engine comparison](ENGINE_COMPARISON.md).
+>
+> **Commit IDs:** the commit IDs below refer to the original development history. Before publication,
+> the history was rewritten only to replace the author email; file contents are unchanged, but those IDs
+> no longer exist in this repository. The committed datasets, results and `eval/reproduce.py` are the evidence.
 
 ## 1. Protocol (each step committed in git, in this order)
 
@@ -125,7 +129,9 @@ The existing quoted, described and negated guards apply. Unit tests cover legiti
 
 ## 6. Reproduce
 ```bash
-python3 eval/v4/generate.py      # identical dataset (seeded)
-python3 eval/v4/run_both.py      # both frozen engines from temporary worktrees -> eval/v4/results.json, metrics.json
+python3 eval/v4/generate.py                        # regenerates the identical dataset (seeded)
+cd backend && uv run python ../eval/reproduce.py   # current engine: all 200 verdicts and metrics match -> REPRODUCED
 ```
+The baseline-vs-candidate run used temporary checkouts of the original commits; its per-case output is
+committed as `eval/v4/results.json` and `eval/v4/metrics.json`.
 Dashboard-ready: `eval/metrics.json` (primary v4 plus v3/v2/v1 history, labelled synthetic).

@@ -1,7 +1,7 @@
 # Engine comparison: v1, v2 and v3 engines on the v1, v2 and v3 datasets
 
 > **Retrospective analysis, not a new benchmark.** Each frozen engine was rerun unchanged on each fixed
-> dataset (`eval/compare_engines.py`, per-case results in `eval/engine_comparison.json`). The three
+> dataset (per-case results in `eval/engine_comparison.json`). The three
 > original pre-registered runs (each engine on its own holdout) reproduce **exactly**, case by case.
 > All data is synthetic and balanced (100/100), so these aren't real-world accuracy figures.
 
@@ -58,4 +58,6 @@ recall 0.69 → 0.88 and FPR 0.11 → 0.02; v1 → v3 on the v2 dataset, recall 
    attack types is about 40%"**, not "recall rose from 0.69 to 0.88". The latter is a development-data
    number.
 
-Reproduce: `python3 eval/compare_engines.py` (temporary worktrees; nothing in the repository is modified).
+The comparison ran each engine from a temporary checkout of its original commit. Those commit IDs no longer
+exist after the author-email rewrite (contents unchanged), so the committed per-case results are the record.
+The latest engine can be re-checked with `eval/reproduce.py`.
