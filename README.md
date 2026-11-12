@@ -113,8 +113,8 @@ change), and your add-on only talks to the address it was approved for. Setup is
 | After a restart, or Gmail shows **"Analysis service unavailable"** | `~/maillens/scripts/start.sh` | Starts Docker and the backend, reuses the tunnel if it still works or opens a new one, re-points **your** add-on to the new address, then checks it end to end |
 | To stop MailLens | `~/maillens/scripts/stop.sh` | Stops the tunnel and the backend. Your API key, history and add-on are kept |
 
-`start.sh` is safe to run at any time and takes under a minute (a new tunnel address can take 1–2 minutes to
-come online). It doesn't rebuild anything or ask for a Google login, and it never creates a new Apps Script
+`start.sh` is safe to run at any time. It takes a few seconds when the tunnel still works, and about 2 minutes
+when it opens a new one (a new tunnel address takes that long to come online). It doesn't rebuild anything or ask for a Google login, and it never creates a new Apps Script
 project. It only updates the add-on's approved address when the address has changed, and only with the Google
 account you confirmed during setup. The add-on's own settings stay locked, so nobody can redirect it from Gmail.
 After it says **MailLens is ready**, reload Gmail. No new Google approval is needed.
