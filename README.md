@@ -241,6 +241,7 @@ docs/       Design and verification documents
 | Document | Contents |
 |---|---|
 | `docs/SECURITY_QA_REPORT.md` | Phase 3 audit: findings, fixes, PASS / FAIL / NOT VERIFIED |
+| `docs/EVALUATION_REPORT.md` | Phase 5 blind evaluation on 200 pre-registered synthetic cases: metrics, failure patterns, limitations |
 | `docs/TESTING_PLAN.md` | Development testing vs. independent evaluation, evaluation policy |
 | `docs/RELIABILITY.md` | Measured latency in real Gmail, stall analysis |
 | `docs/UI_PROPOSAL.md` | Card design decisions and CardService constraints |
