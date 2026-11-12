@@ -79,7 +79,11 @@ def analyze(req: AnalyzeRequest, request_id: str) -> tuple[AnalyzeResponse, Deci
     if ask.note:
         notes.append(ask.note)
 
+    from .signals.action import action_in_context
+    from .signals.ask import _scan_text
+    aic, _action, _contexts = action_in_context(ctx, _scan_text(ctx), any(f.signal == "S11" for f in findings))
     d = decide(findings, ask.level, ask.pressure, ctx.familiarity, auth_available=states["S1"] is CheckState.RAN,
+               action_in_context=aic,
                pretext_secrecy=ask.pretext_secrecy,
                credential_offsite=bool((ask.pattern and ask.pattern.id == "credentials" and offsite_links(ctx))
                                        or known_contact_offsite_share(ctx)))

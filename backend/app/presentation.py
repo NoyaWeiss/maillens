@@ -259,6 +259,7 @@ _DECISION = {
     "H-C": "The email asks for something hard to undo, and other signals support the concern. That makes it High risk.",
     "S-D": "One strong warning sign was found, but nothing else confirms it. That makes it Suspicious.",
     "S-A": "The email asks for something hard to undo. Nothing else looks wrong, but the request alone deserves verification.",
+    "S-X": "An unfamiliar sender asks you to take a sensitive action, and other details of the email add to the concern.",
     "S-L": "The email asks you to sign in, and its link goes to a site unrelated to the sender or anyone you correspond with.",
     "S-P": "An unfamiliar sender asks for an unexplained favor and asks you to keep it secret. That combination is a common opening for fraud.",
     "INC": "The sender couldn't be verified, and the email contains a risky request or an anomaly. "

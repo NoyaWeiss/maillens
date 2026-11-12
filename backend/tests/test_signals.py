@@ -304,3 +304,27 @@ def test_known_partner_sharing_via_known_services_is_not_flagged():
     r = run("Dana <dana@northwind.example>", relationship=known,
             html='<p>I shared the proposal with you.</p><p><a href="https://doc-preview-share.example/p">Open</a></p>')
     assert (r.verdict, r.gate) == ("SUSPICIOUS", "S-L")
+
+
+# ------------------------------------------------------------------ Phase 5d candidate: action in context (S-X)
+def test_action_in_context_fires_with_independent_context():
+    unfamiliar = {**REL, "known_domains": []}
+    cb = run("Billing <b@renewals-desk.example>", relationship=unfamiliar,
+             html="<p>Your plan renewed for $399. To cancel, call +1 (415) 555-0199 within 24 hours.</p>")
+    assert (cb.verdict, cb.gate) == ("SUSPICIOUS", "S-X")
+    refund = run("Refunds <r@refund-office.example>", relationship=unfamiliar,
+                 html='<p>You are eligible for a refund. Submit your bank details on the page.</p><p><a href="https://refund-office.example/c">Claim</a></p>')
+    assert refund.gate == "S-X"
+
+
+def test_action_in_context_stays_quiet_without_independent_context_or_for_known_senders():
+    unfamiliar = {**REL, "known_domains": []}
+    assert run("SaaS <i@taskapp.example>", relationship=unfamiliar,
+               html='<p>Sign in with Google to join.</p><p><a href="https://accounts.google.com/o/oauth2/v2/auth?scope=openid">Sign in</a></p>').verdict == "LOW"
+    assert run("Store <s@shop.example>", relationship=unfamiliar,
+               html='<p>Pay your invoice on our website.</p><p><a href="https://shop.example/pay">Pay</a></p>').verdict == "LOW"
+    known = {**REL, "sender_sent_count": 5}
+    assert run("Vendor <v@acme.example>", relationship=known,
+               html="<p>Please call +1 (415) 555-0100 today about the delivery.</p>").verdict == "LOW"
+    assert run("News <n@charity-news.example>", relationship=unfamiliar, bulk=True,
+               html="<p>Donate today via the link.</p><p><a href='https://other-pay.example'>Give</a></p>").verdict == "LOW"
