@@ -1,139 +1,133 @@
-# MailLens: Phase 5 Evaluation Report
+# MailLens: Detection Evaluation (primary result: v2 holdout)
 
-**Synthetic, balanced, self-authored data.** These numbers describe MailLens on 200 synthetic emails
-with a 50/50 class balance. They are **not** real-world detection accuracy. Real mailboxes are
-overwhelmingly benign, so precision on real traffic would be much lower than reported here for the
-same false-positive rate.
+> **Synthetic, balanced (100/100), self-authored data. These are not real-world accuracy estimates.**
+> Real mail is overwhelmingly benign, so real-world precision at the same false-positive rate would be
+> far lower. Category sizes are small (6–10).
+>
+> Historical baseline (original engine, v1 dataset): [EVALUATION_REPORT_v1.md](EVALUATION_REPORT_v1.md).
 
-## 1. Methodology
+## 1. What was done, in order (git evidence)
 
-| Step | Evidence |
+| Step | Commit |
 |---|---|
-| Engine frozen before the dataset existed | `eval/FREEZE.md`: commit `00bb9d1`, code hash `8ef706999ca4add2` checked by `eval/run.py` (it refuses to run if the engine changed) |
-| Dataset and labels committed **before** any run | `26e28ca` (`eval/dataset.jsonl`, `eval/generate.py`) |
-| One blind run, no rule changes afterwards | `1c6df19` (`eval/results.jsonl`, `eval/metrics.json`) |
+| v1 evaluation of the original engine (`00bb9d1`): recall 0.69, FPR 0.11 | `1c6df19` |
+| v1 preserved under `eval/v1/`; v1 then used **as development data** | `219fea0` |
+| Generalizable improvements from v1 failure patterns, verified on development sets | `97f93f8` |
+| **Engine frozen**, then a **new 200-case holdout written**, labels committed before any run | `138ab48` |
+| Single run of the frozen engine on the holdout | `7bf59ca` |
 
-- **Ground truth:** every label comes from the scenario's *intent* (what the sender is trying to
-  achieve), written in `eval/generate.py` with a rationale per case. No label was derived from or
-  edited after MailLens output.
-- **Independence:** a new synthetic universe (organization `harborview.example`, new vendors, people
-  and domains). There's no overlap with the demo mailbox or the 41 Phase 3 development cases, and no
-  case was used to tune the engine.
-- **Dataset:** 100 Malicious and 100 Legitimate emails in 24 categories, generated programmatically
-  (seed 20261112). The generator uses scenario families with several hand-written phrasings, varied
-  names, amounts and domains, thread history (12 cases), mailbox relationship context, attachments, link
-  styles, bulk headers (18) and missing authentication results (4).
-  - Quality checks before the run: 0 exact duplicates, **0** near-identical pairs (token Jaccard > 0.85),
-    200/200 valid against the production request schema.
-  - Families deliberately include brands, phrasings and techniques the engine has no rule for.
-- **Alert policy (fixed in advance):** Suspicious or High = **detected**; Low = **not detected**.
-  Inconclusive is reported separately: the primary metrics treat it as not detected, and a sensitivity
-  view excludes it.
-- **Intervals:** 95% Wilson score intervals.
+**The v2 holdout:** a new organization (`lattice-dynamics.example`), new people and vendors, and new
+scenario types. These include escrow wire fraud, W-2 data theft, MFA push fatigue, fax/voicemail/chat
+lures, HR-policy phishing, OneNote/VHD/CHM/RTL-override files, investment scams, internal-domain
+look-alikes and fake invoice portals. Legitimate look-alikes include escrow notices that say "we only
+give wiring instructions by phone", IT notices linking to the company's identity provider, and
+colleagues forwarding vendor letters.
+- **Not a paraphrase of v1:** the nearest-neighbour token similarity to any v1 case is at most 0.56
+  (median 0.25); no case exceeds 0.6.
+- **Quality checks:** within-v2 near-duplicates capped at 0.85; 200/200 valid against the production schema.
 
-Rerun:
-```bash
-python3 eval/generate.py                      # regenerates the identical dataset (seeded)
-cd backend && uv run python ../eval/run.py    # results.jsonl, metrics.json
-```
+**Ground truth** comes from each scenario's intent and was committed before the run. **Alert policy**
+(unchanged): Suspicious or High = detected; Low = not detected; Inconclusive reported separately
+(there were none). Intervals are 95% Wilson intervals.
 
-## 2. Results
+## 2. Primary results: v2 holdout, frozen engine `97f93f8`
 
-### Confusion matrix (primary: Inconclusive counted as not detected)
-
-| | Alert (Suspicious/High) | No alert (Low/Inconclusive) |
+| | Alert | No alert |
 |---|---|---|
-| **Malicious (100)** | TP = **69** | FN = **31** (incl. 1 Inconclusive) |
-| **Legitimate (100)** | FP = **11** | TN = **89** |
+| **Malicious (100)** | TP **47** | FN **53** |
+| **Legitimate (100)** | FP **1** | TN **99** |
 
 | Metric | Value | 95% CI |
 |---|---|---|
-| Precision | **0.863** | 0.770–0.921 |
-| Recall (detection rate) | **0.690** | 0.594–0.772 |
-| F1 | **0.767** | – |
-| False-positive rate | **0.110** | 0.063–0.186 |
-| Accuracy | 0.790 | – |
+| Precision | **0.979** | 0.891–0.996 |
+| Recall | **0.47** | 0.375–0.567 |
+| F1 | 0.635 | – |
+| False-positive rate | **0.01** | 0.002–0.054 |
 
-**Inconclusive impact:** 1 case (a malicious forwarded plain-text phish). Excluding it gives
-recall 0.697, F1 0.771; other metrics are unchanged.
+### Did the improvements generalize? Same holdout, both engines frozen
 
-**Verdict mix:**
-- Malicious: 40 High, 29 Suspicious, 30 Low, 1 Inconclusive.
-- Legitimate: 89 Low, 9 High, 2 Suspicious.
-- Alerts on malicious mail came mostly from H-B (33) and S-D (22).
+| Engine | TP | FP | Recall | Precision | FPR |
+|---|---|---|---|---|---|
+| Original `00bb9d1` | 42 | 0 | 0.42 | 1.000 | 0.00 |
+| Improved `97f93f8` | **47** | 1 | **0.47** | 0.979 | 0.01 |
 
-### By category (n per category is small; read as patterns, not rates)
+**Yes, but modestly:** 5 more attacks detected on unseen data, none lost, and 1 new false positive.
 
-| Malicious category | Detected / n |
+The development-set gain was much larger. On v1 (now development data), the engine went from 69 to
+86 detections and from 11 to 2 false positives. Most of that gain was specific to the patterns the
+fixes targeted. **This gap between development and holdout performance is the central finding.**
+
+### By category (v2; detections / n, with the original engine in brackets)
+
+| Malicious | New (original) |
 |---|---|
-| BEC: executive impersonation | 10/10 |
-| BEC: payroll diversion | 8/8 |
-| Vendor thread hijack | 8/8 |
-| OAuth consent phishing | 6/6 |
-| Social engineering (MFA code / remote access) | 6/6 |
-| Payment redirection | 9/10 |
-| Malicious attachment | 7/10 |
-| Credential phishing (brand impersonation) | 5/10 |
-| Vendor impersonation (look-alike domain) | 4/8 |
-| Evasion attempts | 4/10 |
-| Compromised known contact | 2/8 |
-| Plain-text phishing, clean infrastructure | 0/6 |
+| CFO wire request | 8/8 (8) |
+| W-2 / payroll data theft | 6/6 (6) |
+| Internal-domain look-alike | 8/8 (8) |
+| Escrow wire fraud | 6/9 (6) |
+| Notification lure (fax / voicemail / chat) | **6/10 (2)** |
+| Malicious attachment, new file types | 5/8 (4) |
+| Evasion, new techniques | 4/7 (4) |
+| Vendor email compromise (real mailbox) | 4/8 (4) |
+| HR-policy phishing | 0/8 (0) |
+| MFA push fatigue | 0/6 (0) |
+| Compromised partner mailbox | 0/8 (0) |
+| Fake invoice portal / QR | 0/8 (0) |
+| Investment / prize scam | 0/6 (0) |
 
-| Legitimate category | False alarms / n |
-|---|---|
-| Routine business · invoices · urgent internal requests · newsletters · **security newsletters/awareness about scams** · **legitimate payment-detail changes** · platform/ticketing/list mail · attachments · SSO invitations | **0** across 78 |
-| Account / security notifications | 3/10 |
-| Unfamiliar or new address (benign) | 2/6 |
-| **Forwarded phish reported to IT** | **6/6** |
+**Legitimate:** 0 false alarms in 11 of 12 categories, including legitimate escrow notices, security
+awareness emails that quote attacks, executives' urgent requests, colleagues forwarding mail, and cold
+outreach. The single false alarm: an internal IT notice whose sign-in link goes to a SaaS
+identity-provider domain (the S-L rule). This risk was predicted when the rule was added.
 
-**By difficulty (pre-assigned):**
-- Malicious detected: easy 8/12, medium 41/50, hard 20/38.
-- Legitimate false alarms: easy 0/28, medium 3/44, hard 8/28.
+## 3. Failure patterns (v2)
 
-## 3. Failure patterns
+1. **Request-type coverage (dominant):** in **45 of 53 misses no request was detected at all.** The
+   fixed English pattern list doesn't cover approving MFA prompts, sending crypto or "processing fees",
+   paying through a portal, acknowledging an HR policy, or simply opening a shared file. New attack
+   *types* defeat a closed taxonomy, even when the wording is ordinary.
+2. **Self-consistent attacker infrastructure:** fake portals and HR pages are hosted on the sender's own
+   authenticated domain, so there's no observable contradiction, which is the engine's core signal.
+3. **Compromised real mailboxes** (partner 0/8, vendor 4/8): authentication and history are genuine; only
+   the request or link destination differs.
+4. **Imitations of the company's own domain using neutral words** (`-hr`, `-people`) aren't in the
+   combosquatting word list.
 
-**False negatives (31):**
+## 4. What was improved (engine `97f93f8`; details in the commit)
 
-| Pattern | Cases | Why |
-|---|---|---|
-| Plain-text phishing from attacker-owned, authenticated domains | 6 (1 Inconclusive) | Documented blind spot: no contradiction to observe; no reputation data |
-| Compromised known contact sending a link | 6 | Known, authenticated sender with generic link text; by design a level-2 request alone never escalates |
-| Brands outside the small brand list (Zoom, Slack, Wells Fargo, Adobe Sign, Salesforce) | 5 | The display-name brand check and brand-in-subdomain URL check only know a few brands; generic link text gives the link check nothing to compare |
-| **Combosquatting** (`vendorname-billing`, `vendorname-finance`) | 5 | The look-alike check catches near-spellings (edit distance ≤ 2) and confusable characters, **not** a real vendor name plus a suffix |
-| Evasion: image-only instruction, fake quoted history, **attacker-added bulk headers**, URL shortener, a request split across sentences, letter-spaced words | 6 of 10 | Matching works per sentence on visible text; bulk headers downgrade link findings (abusable); no OCR |
-| Macro-enabled Office files and password-protected ZIPs | 3 | Rated weak (level 1) by design to avoid false alarms on internal workbooks |
-| Unusual request phrasing ("update the beneficiary on file") | (within the above) | Request patterns are a fixed English pattern list |
+- **Brand list:** demo-only brands removed (they caused false positives); commonly impersonated brands
+  added; the brand must lead the display name.
+- **New detections:** combosquatting (a known name plus a risk word); link text showing a brand domain is
+  no longer excused by an own-domain or bulk-mail guard.
+- **Attachment rule:** macro documents and password-protected archives are strong only from unfamiliar
+  or unauthenticated senders.
+- **Forwarded content (F-18):** content forwarded by known, authenticated colleagues is treated as reported.
+- **Sign-in link rule (S-L):** a sign-in request with a link to an unrelated, never-seen domain is
+  Suspicious only.
+- **Request phrasing:** "update the beneficiary", two-sentence bank changes, single spaced-out words.
 
-**False positives (11):**
+## 5. Limitations
 
-| Pattern | Cases | Why |
-|---|---|---|
-| Colleague forwards a phish to IT | 6 | Known limitation F-18: forwarded content is evaluated as the forwarder's own |
-| A legitimate service named "CloudMail" | 3 | **Collision with a demo-only brand entry** (`cloudmail` → `cloudmail.example`) in the engine's brand list; the generator reused the name. Lesson: demo fixtures must not live in the production brand list |
-| A known partner writing casually from a personal Gmail | 2 | Known name from a free-mail address is strong evidence by design (it's also how payroll diversion looks) |
+- **Same author for engine and both datasets:** shared blind spots are possible. v2 was written after
+  the freeze, with new scenario types, to reduce this, but an external or real corpus is the real test.
+- **Balanced classes; small categories; template-based variation; simulated relationship context.**
+- **v2 is now spent as a holdout:** any further tuning informed by these results must be validated on
+  yet another new holdout.
 
-What worked: **zero false alarms** on security newsletters and awareness emails that quote scams,
-genuine payment-detail changes, invoices, urgent internal requests and platform mail (78 cases). Every
-BEC, thread-hijack, OAuth-consent and MFA/remote-access attack was detected.
+## 6. Recommended next steps (not applied; v2 must stay an untouched holdout)
 
-## 4. Limitations of this evaluation
+1. A broader, intent-based request taxonomy (approvals, fees, portals, acknowledgements), validated on a
+   new holdout.
+2. Destination novelty for *any* call to action, not only sign-in requests, with an allow-list of the
+   organization's identity providers to avoid the observed false positive.
+3. Add organization-specific words (`hr`, `people`, `it`) to the combosquatting check.
 
-- **Synthetic and self-authored:** the same team wrote the engine and the dataset. Families were designed
-  to include unknown techniques, but a shared mental model is unavoidable. An external or real-world
-  corpus would be the next step.
-- **Balanced classes:** precision does not transfer to real prevalence.
-- **Small categories (4–12 each):** wide uncertainty; the intervals are given only for the overall metrics.
-- **Templated variation:** families vary wording, names and structure, but cases within a family share a
-  scenario.
-- **Relationship context is simulated** (the facts the add-on would compute), not read from a real mailbox.
-- **Single run:** the engine is deterministic, so variance comes only from dataset construction.
+## 7. Reproduce
 
-## 5. Future improvements (documented only; not applied, the engine stays frozen for this report)
+```bash
+python3 eval/v2/generate.py                       # identical dataset (seeded)
+cd backend && uv run python ../eval/run.py v2     # checks the frozen engine hash, then evaluates
+```
 
-1. Remove demo-only brands from the production brand list (fixture isolation).
-2. Detect combosquatting: a known vendor or brand name plus a separator and suffix.
-3. Expand the brand list, or derive brands from the user's own correspondents.
-4. Handle forwarded content explicitly (F-18): attribute it to "forwarded", and explain rather than escalate.
-5. Make bulk-header leniency conditional on authentication matching the List-Unsubscribe domain.
-6. Match requests across sentence boundaries; normalize spaced-out letters.
-7. Any change must then be evaluated on a **new** holdout, not this one.
+Machine-readable: `eval/metrics.json` (primary, dashboard-ready, includes the historical v1 summary),
+`eval/v2/results.jsonl`, `eval/v2/metrics.json`, `eval/v2/results_original_engine.json`.
