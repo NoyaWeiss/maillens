@@ -37,3 +37,31 @@ test('plain-text-only message falls back to text for the body; invalid tickets r
   assert.ok(page.includes('var T="";') && !/<script[^>]*src=/.test(page));
   assert.ok(ctx.SCAN_TICKET_RE.test('a'.repeat(32)) && !ctx.SCAN_TICKET_RE.test('x"</script><script>alert(1)//aaaaaaaaaaaa'));
 });
+
+test('doGet uses only real HtmlService options (regression: "argument cannot be empty: mode")', () => {
+  const calls = [];
+  const out = { setTitle(t) { calls.push(['title', t]); return out; },
+    setXFrameOptionsMode(m) { if (m === undefined || m === null) throw new Error('The argument cannot be empty: mode'); calls.push(['xfo', m]); return out; } };
+  ctx.HtmlService = { createHtmlOutput: (h) => { calls.push(['html', h.length > 0]); return out; },
+    XFrameOptionsMode: { ALLOWALL: 'ALLOWALL', DEFAULT: 'DEFAULT' } };  // the real enum has no DENY
+  assert.strictEqual(ctx.doGet({ parameter: { t: 'a'.repeat(32) } }), out);
+  assert.ok(!calls.some((c) => c[0] === 'xfo' && c[1] === 'ALLOWALL'), 'page must stay non-frameable (DEFAULT)');
+  assert.strictEqual(ctx.doGet({}), out);  // missing ticket renders the inert error page, never throws
+});
+
+test('scan batch skips messages received before the selected range (exact received-time cutoff)', () => {
+  const analyzed = [];
+  const cutoff = Date.UTC(2026, 10, 5, 12, 0, 0);
+  ctx.getSettings_ = () => ({ url: 'https://b.example', apiKey: 'k' });
+  ctx.getGrantedScopes_ = () => ['gmail.readonly'];
+  ctx.accountKey_ = () => 'k'.repeat(64);
+  ctx.UrlFetchApp = { fetch: () => ({ getResponseCode: () => 200, getContentText: () => '{}' }) };
+  ctx.newTimer_ = () => ({});
+  ctx.buildPayload_ = (m) => ({ id: m.getId() });
+  ctx.callAnalyze_ = (s, p, t, id, received) => analyzed.push([id, received]);
+  const msgs = { aaaaaa01: cutoff - 1000, aaaaaa02: cutoff, aaaaaa03: cutoff + 3600e3 };
+  ctx.Gmail = { Users: { Messages: { get: (_, id) => ({ id, threadId: 't', internalDate: String(msgs[id]), payload: { mimeType: 'text/plain', body: {} } }) } } };
+  const totals = ctx.scanBatch('t'.repeat(32), Object.keys(msgs), { state: 'running', total: 3, done: 0, skipped: 0, failed: 0, afterMs: cutoff });
+  assert.deepStrictEqual([totals.done, totals.skipped, totals.failed], [2, 1, 0]);
+  assert.strictEqual(JSON.stringify(analyzed), JSON.stringify([['aaaaaa02', cutoff], ['aaaaaa03', cutoff + 3600e3]]));  // boundary inclusive; Gmail time passed on
+});

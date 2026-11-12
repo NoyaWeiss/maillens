@@ -154,7 +154,38 @@ def test_received_time_drives_ordering():
     body = make_request("Shop <x@shop.example>", subject="old").model_dump(mode="json")
     c.post("/v1/analyze", json=body, headers={**KEY, "X-MailLens-Account": acct, "X-MailLens-Message": "oldmsg01",
                                               "X-MailLens-Received": str(int((__import__("time").time() - 5 * 86400) * 1000))})
-    analyze(c, acct, "newmsg01", subject="new")
+    body_new = make_request("Shop <x@shop.example>", subject="new").model_dump(mode="json")
+    c.post("/v1/analyze", json=body_new, headers={**KEY, "X-MailLens-Account": acct, "X-MailLens-Message": "newmsg01",
+                                                  "X-MailLens-Received": str(int(__import__("time").time() * 1000))})
     h, _, _ = session(c, acct)
     e = c.get("/v1/dashboard/emails", headers=h).json()["emails"]
     assert [x["subject"] for x in e] == ["new", "old"] and e[1]["received_at"] < e[0]["received_at"] - 4 * 86400
+
+
+# ------------------------------------------------------------------ received time (time filters) regressions
+def test_received_time_sources_and_timezones():
+    from app.main import received_time
+    assert received_time("1762941600000", "Mon, 1 Jan 2024 00:00:00 +0000") == 1762941600        # Gmail's time wins
+    # Date header with a timezone: 10:00 at +02:00 is 08:00 UTC.
+    assert received_time(None, "Wed, 12 Nov 2025 10:00:00 +0200") == 1762934400
+    assert received_time(None, "Wed, 12 Nov 2025 10:00:00 -0500") == 1762959600
+    assert received_time(None, "not a date") is None and received_time(None, None) is None
+    assert received_time("", "Wed, 12 Nov 2025 10:00:00") is None                                   # no timezone: unknown
+
+
+def test_old_email_analyzed_today_keeps_its_received_time_and_unknown_is_never_analysis_time():
+    import time as _t
+    c = client()
+    acct = "q" * 64
+    old_ms = str(int((_t.time() - 20 * 86400) * 1000))
+    body = make_request("Shop <x@shop.example>", subject="old email, analyzed now").model_dump(mode="json")
+    body["message"]["date"] = None
+    c.post("/v1/analyze", json=body, headers={**KEY, "X-MailLens-Account": acct, "X-MailLens-Message": "old00001", "X-MailLens-Received": old_ms})
+    c.post("/v1/analyze", json=body, headers={**KEY, "X-MailLens-Account": acct, "X-MailLens-Message": "nodate01"})
+    # Re-analysis without a received time must not erase the known one.
+    c.post("/v1/analyze", json=body, headers={**KEY, "X-MailLens-Account": acct, "X-MailLens-Message": "old00001"})
+    h, _, _ = session(c, acct)
+    rows = {e["id"]: e for e in c.get("/v1/dashboard/emails", headers=h).json()["emails"]}
+    by_msg = sorted(rows.values(), key=lambda e: e["received_at"] is None)
+    assert abs(by_msg[0]["received_at"] - int(old_ms) / 1000) < 1 and by_msg[0]["analyzed_at"] > _t.time() - 60
+    assert by_msg[1]["received_at"] is None                                                            # unknown stays unknown

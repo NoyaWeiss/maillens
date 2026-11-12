@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { BASIS, Disclosure, Panel, RiskIndex, State, VERDICTS, VerdictBadge, fmtDate, splitSender } from './ui.jsx';
+import { BASIS, Panel, RiskIndex, State, VERDICTS, VerdictBadge, fmtDate, splitSender } from './ui.jsx';
 
 // Selected email inside Overview: Assessment -> Why -> What to do. Everything comes from the stored analysis.
 const WHY_TITLE = {
@@ -53,7 +53,7 @@ function Assessment({ d }) {
         </div>
         <h2 className="assess-subject">{d.subject}</h2>
         <p className="assess-sender">{s.name}{s.address && s.address !== s.name ? <span className="mono"> · {s.address}</span> : null}
-          <span className="muted"> · {fmtDate(d.received_at || d.analyzed_at)}</span></p>
+          {typeof d.received_at === 'number' ? <span className="muted"> · Received {fmtDate(d.received_at)}</span> : null}</p>
         <p className="assess-headline">{r.headline}</p>
       </Panel>
 
@@ -71,9 +71,6 @@ function Assessment({ d }) {
           </ol>
         ) : <p className="reason-text">Nothing in this email contradicted what it claims to be.</p>}
         {r.limitations && r.limitations.length ? <p className="caveat">{r.limitations.join(' ')}</p> : null}
-        <Disclosure title="View technical evidence">
-          <TechnicalEvidence r={r} />
-        </Disclosure>
       </Panel>
 
       <Panel title="What should I do?">
@@ -83,29 +80,5 @@ function Assessment({ d }) {
         {r.verdict === 'LOW' ? <p className="caveat">Low risk isn&apos;t a guarantee. If a request seems unusual, confirm it through a channel you already trust.</p> : null}
       </Panel>
     </>
-  );
-}
-
-function TechnicalEvidence({ r }) {
-  const ran = r.checks.filter((c) => c.state === 'ran').length;
-  return (
-    <div className="tech">
-      {r.findings.map((f, i) => (
-        <div key={i} className="tech-block">
-          <p className="reason-title">{f.title} <span className="muted">· strength {f.level}/3</span></p>
-          <dl className="kv">
-            {(f.details || []).map((x, j) => <div key={j}><dt>{x.label}</dt><dd className="mono">{x.value}</dd></div>)}
-            {!(f.details || []).length ? <><div><dt>Claim</dt><dd>{f.claim}</dd></div><div><dt>Reality</dt><dd>{f.reality}</dd></div></> : null}
-          </dl>
-        </div>
-      ))}
-      {r.findings.length > 3 ? <p className="muted">Showing all {r.findings.length} findings; the summary above lists the top three.</p> : null}
-      <dl className="kv">
-        {r.also_observed.length ? <div><dt>Also noticed</dt><dd>{r.also_observed.map((a) => a.title).join(', ')} (counted once)</dd></div> : null}
-        <div><dt>Decision rule</dt><dd>{r.gate_explanation}</dd></div>
-        <div><dt>Checks</dt><dd>{ran} of {r.checks.length} ran{r.checks.filter((c) => c.state === 'unavailable').map((c) => `; ${c.label || c.name} unavailable`).join('')}</dd></div>
-        {r.safeguards.length ? <div><dt>Safeguards applied</dt><dd>{r.safeguards.join(' ')}</dd></div> : null}
-      </dl>
-    </div>
   );
 }

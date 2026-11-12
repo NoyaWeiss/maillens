@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import ActivityChart, { RANGES } from './ActivityChart.jsx';
+import ActivityChart from './ActivityChart.jsx';
+import { RANGES, filterByReceived } from './timefilter.js';
 import EmailAssessment from './Investigation.jsx';
 import { api } from './api.js';
 import { Panel, SectionHeader, Segmented, State, VERDICTS, VERDICT_ORDER, VerdictBadge, fmtDate, splitSender } from './ui.jsx';
@@ -7,12 +8,17 @@ import { Panel, SectionHeader, Segmented, State, VERDICTS, VERDICT_ORDER, Verdic
 const RANGE_OPTIONS = Object.keys(RANGES).map((k) => ({ value: k, label: k }));
 
 export default function Overview({ source, selected, onSelect, onBack, onClear, onDemo, onRefresh }) {
-  const [range, setRange] = useState('7D');
+  const [range, setRangeState] = useState('7D');
+  const [now, setNow] = useState(() => Date.now() / 1000);
+  const setRange = (r) => { setNow(Date.now() / 1000); setRangeState(r); };  // fresh cutoff on every change
+  useEffect(() => setNow(Date.now() / 1000), [source.emails]);
   const [query, setQuery] = useState('');
   const [verdict, setVerdict] = useState('ALL');
-  const { emails = [], now, mode } = source;
+  const { emails = [], mode } = source;
 
-  const inRange = useMemo(() => emails.filter((e) => e.received_at >= now - RANGES[range].seconds), [emails, range, now]);
+  // Every count, the chart and the list use RECEIVED time only (see timefilter.js).
+  const inRange = useMemo(() => filterByReceived(emails, range, now), [emails, range, now]);
+  const unknown = emails.filter((e) => typeof e.received_at !== 'number').length;
   const list = useMemo(() => inRange.filter((e) => (verdict === 'ALL' || e.verdict === verdict) &&
     (!query || `${e.subject} ${e.sender}`.toLowerCase().includes(query.trim().toLowerCase()))), [inRange, query, verdict]);
   const count = (v) => inRange.filter((e) => e.verdict === v).length;
@@ -33,6 +39,7 @@ export default function Overview({ source, selected, onSelect, onBack, onClear, 
         </Panel>
       ) : (
         <>
+          <p className="range-note">Showing emails received in the {RANGES[range].label}.</p>
           <div className="stats">
             <Stat label="Analyzed emails" value={inRange.length} />
             <Stat label="High risk" value={count('HIGH')} tone="high" />
@@ -75,8 +82,9 @@ export default function Overview({ source, selected, onSelect, onBack, onClear, 
                     );
                   })}
                 </ul>
-              ) : <p className="muted pad">No emails match{inRange.length < emails.length ? ` in the ${RANGES[range].label}` : ''}.</p>}
-              <p className="footnote">{mode === 'demo' ? 'Synthetic demo emails.' : 'Only emails MailLens has analyzed are listed. Records are kept for 30 days.'}</p>
+              ) : <p className="muted pad">No emails received in the {RANGES[range].label} match.</p>}
+              <p className="footnote">{mode === 'demo' ? 'Synthetic demo emails.' : 'Only emails MailLens has analyzed are listed.'}
+                {unknown ? ` ${unknown} older ${unknown === 1 ? 'record has' : 'records have'} no received time and ${unknown === 1 ? 'is' : 'are'} hidden; open ${unknown === 1 ? 'it' : 'them'} in Gmail again to update.` : ''}</p>
             </Panel>
           ) : null}
         </>
@@ -110,6 +118,7 @@ function ScanInbox({ mode, available, range, onFinished }) {
         const waited = Date.now() - started;
         if (p.state === 'done') { setScan({ status: 'done', p }); onFinished(); return; }
         if (p.state === 'error') { setScan({ status: 'error', message: p.error || 'The scan stopped.' }); return; }
+        if (p.state === 'cancelled') { setScan({ status: 'error', message: `Scan cancelled after ${p.done} emails.` }); onFinished(); return; }
         if (waited > 15 * 60 * 1000) { setScan({ status: 'error', message: 'The scan timed out.' }); return; }
         setScan({ status: p.state === 'running' ? 'running' : 'waiting', p, slow: p.state === 'waiting' && waited > 60000 });
         poll(ticket, started);
@@ -144,8 +153,10 @@ function ScanInbox({ mode, available, range, onFinished }) {
       ) : null}
       {scan.status === 'done' ? <span className="scan-msg ok">Scanned {p.total}: {p.done} new{p.skipped ? `, ${p.skipped} already analyzed` : ''}{p.failed ? `, ${p.failed} failed` : ''}</span> : null}
       {scan.status === 'error' ? <span className="scan-msg err" role="alert">{scan.message}</span> : null}
-      <button type="button" className="btn btn-primary" onClick={start} disabled={busy}
-        title={`Analyze up to 50 of the newest inbox emails from the ${RANGES[range].label}`}>{busy ? 'Scanning…' : 'Scan inbox'}</button>
+      <span className="scan-action">
+        <button type="button" className="btn btn-primary" onClick={start} disabled={busy}>{busy ? 'Scanning…' : 'Scan inbox'}</button>
+        <span className="scan-hint">Scans emails received in the {RANGES[range].label} (up to 50).</span>
+      </span>
     </div>
   );
 }

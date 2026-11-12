@@ -7,6 +7,7 @@ import logging
 import os
 import time
 import uuid
+from email.utils import parsedate_to_datetime
 from pathlib import Path
 from functools import lru_cache
 
@@ -31,6 +32,21 @@ _SCAN_URL = r"^https://script\.google\.com/macros/s/[A-Za-z0-9_-]{20,120}/(exec|
 # Gmail's add-on message id is opaque (it is not always the 16-hex Gmail API id; it can carry a prefix
 # such as "msg-f:"). It is only ever HMAC'd, never parsed or displayed, so accept any printable token.
 _GMAIL_ID = re.compile(r"^[!-~]{1,200}$")
+
+
+def received_time(header_ms: str | None, date_header: str | None) -> float | None:
+    """When the email arrived, as UTC epoch seconds. Gmail's received timestamp (sent by the add-on as
+    X-MailLens-Received, from internalDate / getDate) wins; otherwise the email's Date header, honoring its
+    timezone; otherwise unknown (None). Never the analysis time: time filters must not depend on it."""
+    if header_ms and header_ms.isdigit():
+        return int(header_ms) / 1000
+    if date_header:
+        try:
+            dt = parsedate_to_datetime(date_header)
+            return dt.timestamp() if dt.tzinfo else None
+        except (TypeError, ValueError, IndexError, OverflowError):
+            return None
+    return None
 
 
 def _shape(value: str) -> str:
@@ -82,7 +98,7 @@ class ScanKnown(ScanAuth):
 
 
 class ScanProgress(ScanAuth):
-    state: str = Field(pattern="^(running|done|error)$")
+    state: str = Field(pattern="^(running|done|error|cancelled)$")
     total: int = Field(ge=0, le=SCAN_LIMIT)
     done: int = Field(ge=0, le=SCAN_LIMIT)
     skipped: int = Field(ge=0, le=SCAN_LIMIT)
@@ -165,7 +181,7 @@ def create_app() -> FastAPI:
         if acct_ok and msg_ok:
             history.record(x_maillens_account, x_maillens_message, req.message.subject or "(no subject)",
                            req.message.from_header or "", resp.model_dump(mode="json"),
-                           received=int(x_maillens_received) / 1000 if (x_maillens_received or "").isdigit() else None)
+                           received=received_time(x_maillens_received, req.message.date))
         elif x_maillens_account or x_maillens_message:  # sent but unusable: log shapes only, never values
             log.warning("history not recorded account=%s message=%s", "ok" if acct_ok else _shape(x_maillens_account or "") or "missing",
                         "ok" if msg_ok else _shape(x_maillens_message or "") or "missing")

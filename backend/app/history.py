@@ -73,12 +73,13 @@ class History:
                received: float | None = None) -> None:
         acct, now = self.account_id(account_key), time.time()
         ref = self.message_ref(acct, message_id)
-        received = received if received and 0 < received <= now + 300 else now
+        if not received or not 0 < received <= now + 300:
+            received = None  # unknown or implausible: kept unknown, never replaced by the analysis time
         with self._lock:
             self._db.execute(
                 "INSERT INTO emails (account, ref, first_ts, ts, count, received, verdict, score, subject, sender, result) "
                 "VALUES (?,?,?,?,1,?,?,?,?,?,?) ON CONFLICT(account, ref) DO UPDATE SET "
-                "ts=excluded.ts, count=count+1, received=excluded.received, verdict=excluded.verdict, score=excluded.score, "
+                "ts=excluded.ts, count=count+1, received=COALESCE(excluded.received, received), verdict=excluded.verdict, score=excluded.score, "
                 "subject=excluded.subject, sender=excluded.sender, result=excluded.result",
                 (acct, ref, now, now, received, result["verdict"], result.get("score"), subject[:300], sender[:300], json.dumps(result)))
             self._db.execute("DELETE FROM emails WHERE ts < ?", (now - RETENTION_S,))
@@ -165,11 +166,11 @@ class History:
     def list(self, acct: str) -> list[dict]:
         with self._lock:
             rows = self._db.execute("SELECT ref, first_ts, ts, count, verdict, score, subject, sender, result, received FROM emails "
-                                    "WHERE account=? AND ts>=? ORDER BY COALESCE(received, ts) DESC", (acct, time.time() - RETENTION_S)).fetchall()
+                                    "WHERE account=? AND ts>=? ORDER BY received IS NULL, received DESC, ts DESC", (acct, time.time() - RETENTION_S)).fetchall()
         out = []
         for ref, first_ts, ts, count, verdict, score, subject, sender, result, received in rows:
             r = json.loads(result)
-            out.append({"id": ref, "first_analyzed": first_ts, "analyzed_at": ts, "received_at": received or ts,
+            out.append({"id": ref, "first_analyzed": first_ts, "analyzed_at": ts, "received_at": received,
                         "times_analyzed": count, "verdict": verdict,
                         "score": score, "subject": subject, "sender": sender, "category": r.get("category", ""),
                         "headline": r.get("headline", "")})
@@ -182,7 +183,7 @@ class History:
         if not row:
             return None
         first_ts, ts, count, subject, sender, result, received = row
-        return {"id": ref, "first_analyzed": first_ts, "analyzed_at": ts, "received_at": received or ts, "times_analyzed": count,
+        return {"id": ref, "first_analyzed": first_ts, "analyzed_at": ts, "received_at": received, "times_analyzed": count,
                 "subject": subject, "sender": sender, "result": json.loads(result)}
 
     def clear(self, acct: str) -> int:

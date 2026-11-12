@@ -7,9 +7,9 @@ import Performance from './Performance.jsx';
 import { State } from './ui.jsx';
 
 const TABS = [
-  { key: 'overview', label: 'Overview' },
-  { key: 'performance', label: 'Detection Performance' },
-  { key: 'how', label: 'How MailLens Works' },
+  { key: 'overview', label: 'Overview', icon: 'M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z' },
+  { key: 'performance', label: 'Detection Performance', icon: 'M5 9.2h3V19H5V9.2zM10.6 5h2.8v14h-2.8V5zm5.6 8H19v6h-2.8v-6z' },
+  { key: 'how', label: 'How MailLens Works', icon: 'M12 2a10 10 0 100 20 10 10 0 000-20zm1 17h-2v-2h2v2zm2.07-7.75l-.9.92C13.45 12.9 13 13.5 13 15h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26A1.99 1.99 0 0012 7a2 2 0 00-2 2H8a4 4 0 118 0c0 .88-.36 1.68-.93 2.25z' },
 ];
 
 function parseRoute() {
@@ -74,17 +74,21 @@ export default function App() {
   return (
     <div className="shell">
       <a className="skip" href="#main">Skip to content</a>
-      <header className="topbar">
-        <div className="brand"><span className="logo" aria-hidden="true" /><span>MailLens</span></div>
+      <aside className="sidebar">
+        <div className="brand"><span className="logo" aria-hidden="true" /><span>MailLens<small>Security Console</small></span></div>
         <nav aria-label="Sections">
-          <ul className="tabs">
+          <ul className="nav">
             {TABS.map((t) => (
-              <li key={t.key}><a href={`#/${t.key}`} className={route.page === t.key ? 'active' : ''} aria-current={route.page === t.key ? 'page' : undefined}>{t.label}</a></li>
+              <li key={t.key}>
+                <a href={`#/${t.key}`} className={route.page === t.key ? 'active' : ''} aria-current={route.page === t.key ? 'page' : undefined}>
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d={t.icon} /></svg><span>{t.label}</span>
+                </a>
+              </li>
             ))}
           </ul>
         </nav>
-        <AccountChip account={account} demoMode={demoMode} />
-      </header>
+        <div className="sidebar-foot"><AccountChip account={account} demoMode={demoMode} /></div>
+      </aside>
 
       <main id="main" className="main">
         {demoMode ? (
