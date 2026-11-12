@@ -16,6 +16,15 @@ signal has a tested false-positive guard, and "unknown" never escalates.
 > Built for the Upwind Security Analyst home assignment. Everything here runs on your own machine,
 > with your own Google account. No cloud service or third-party API is required.
 
+**Capabilities**
+- **In Gmail:** verdict, risk index, the reasons (each labelled as observed or inferred), possible impact, next
+  steps, and a detailed analysis with check coverage.
+- **Security Console (optional dashboard):** your account's analyzed emails over a 1-hour to 1-year
+  received-time window, search and per-email assessments, an optional **Scan Inbox**, the benchmark results,
+  and how detection works.
+- **Measured, not claimed:** a frozen engine evaluated on a pre-registered synthetic benchmark (200 emails):
+  precision 0.97, recall 0.63, false-positive rate 0.02 (`docs/EVALUATION_REPORT.md`).
+
 ---
 
 ## Contents
@@ -53,18 +62,38 @@ signal has a tested false-positive guard, and "unknown" never escalates.
 - **Sent to the backend:** From, Reply-To, Subject, all Authentication-Results headers, a bulk flag,
   the body (capped), attachment names and types (never their bytes), a digest of up to 5 earlier thread
   messages (headers only), and relationship facts (counts and matched addresses; never contact names).
+- **Dashboard (optional):** served by the same backend at `/dashboard/`, opened from the add-on with a one-time
+  launch code. Per-account history (subject, sender, result; never the body) is the backend's only state.
+
+```
+ Gmail ──► add-on ──HTTPS (your tunnel)──► backend :8787 ──► verdict card in Gmail
+                │                            │
+                └─ "View full dashboard" ──► /dashboard/  (React, same origin, per-account session)
+                                             ▲
+   Scan Inbox: dashboard ─ticket─► your own Apps Script web app (runs as you, gmail.readonly) ─► backend
+```
 
 ## 2. Run it yourself (reviewer setup)
 
 About 20–30 minutes on a fresh machine. Steps marked 👤 need your own Google login or a click in a
-Google page; everything else is scripted.
+Google page; everything else is scripted. **Required:** Steps 1–5 and 7. **Optional:** Step 6 (demo
+mailbox) and Step 8 (dashboard, Scan Inbox).
+
+> **Not yet verified end-to-end:** the Google steps (clasp login, project creation, consent, test
+> install) were exercised on the author's own test account, not on a brand-new reviewer account. If a
+> Google screen differs from the text below, follow Google's prompt; the checklist in
+> `docs/DEMO_GUIDE.md` lists what to confirm. No Google Cloud project setup is needed: Apps Script's
+> default project is enough.
 
 ### Prerequisites
-- **Docker** (Docker Desktop on macOS or Windows)
+- **Docker** (Docker Desktop on macOS or Windows). The image also builds the dashboard; no local Node
+  build is needed for it.
 - **Python 3.9+** (only for small helper scripts)
 - **Node.js 18+** and **clasp**: `npm install -g @google/clasp`
 - **cloudflared**: <https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/>
 - A **Google account for testing.** A dedicated test account is recommended, because the add-on can request read access to the mailbox.
+- Nothing in this repository points at the author's machine, tunnel or Google account: your backend key,
+  tunnel URL and Apps Script project are all created by the steps below.
 
 ### Step 1: Start the backend (Docker)
 ```bash
@@ -124,8 +153,8 @@ emails (`.example` domains) to your inbox and Sent folder.
 The dashboard is a React app served by **the same backend**, behind your own HTTPS tunnel. Nothing extra to
 install: `run-backend-docker.sh` builds it into the image.
 
-- **From Gmail:** on the MailLens Welcome screen choose **View full dashboard** (your account's activity), or on a
-  result card choose **Full dashboard** (opens with that email selected). It opens in a new tab.
+- **From Gmail:** choose **View full dashboard** on the MailLens Home screen or on any result card. It opens
+  Overview (your analyzed emails) in a new tab; the email you came from is marked "Opened in Gmail".
 - **Directly:** `<your tunnel URL>/dashboard/` shows Detection Performance, How MailLens Works and a labelled
   **Demo Mode** (synthetic emails). Your own activity appears only when opened from Gmail.
 - **Tabs:** Overview (activity, search, and each email's assessment), Detection Performance, How MailLens Works.
@@ -145,8 +174,8 @@ Why it works this way (verified against Google's documentation):
   to that user). The backend stores only an HMAC of it, so accounts are isolated server-side.
 - **On click,** the add-on asks the backend (API key + account key) for a **one-time launch code** that expires in
   2 minutes. Only that code goes in the URL fragment: never an OAuth token, API key, email address or content.
-  The dashboard exchanges it for an 8-hour session bound to this browser tab. The selected email is resolved
-  server-side from that account's own history.
+  The dashboard exchanges it for an 8-hour session bound to this browser tab. The email you came from is
+  resolved server-side from that account's own history.
 - **History** keeps subject, sender and the analysis result (never the body) for 1 year, at most 500 emails per
   account, in the `maillens-data` Docker volume. **Clear history** on the Overview deletes it.
 - **Tunnel restarts:** a quick tunnel gets a new URL on restart. Run `./scripts/push-addon.sh` again so both
@@ -227,14 +256,17 @@ Details and findings: `docs/SECURITY_QA_REPORT.md`.
 
 ```bash
 cd backend && uv sync && uv run pytest -q     # without uv: pip install -r requirements.txt && pip install pytest httpx && pytest -q
-node --test addon/tests/                      # add-on: card rendering, escaping, failure paths
+cd .. && node --test addon/tests/ dashboard/tests/
 node addon/tests/contract.mjs http://127.0.0.1:8787 "$(grep MAILLENS_API_KEY backend/.env | cut -d= -f2-)"
+cd backend && uv run python ../eval/reproduce.py   # re-runs the 200-email benchmark; prints REPRODUCED
 ```
 
 | Suite | Count | What it covers |
 |---|---|---|
-| Backend | 254 tests | per-signal must-fire / must-not-fire; engine invariants (exhaustive grid); the demo scenarios; adversarial input; grounding of explanations; a decision snapshot proving presentation changes never alter verdicts |
-| Add-on | 76 tests | every card rendered for real backend responses through a strict CardService double (Gmail's render-time rules), hostile-string escaping, failure paths |
+| Backend | 257 tests | per-signal must-fire / must-not-fire; engine invariants (exhaustive grid); the demo scenarios; adversarial input; grounding of explanations; a decision snapshot proving presentation changes never alter verdicts; dashboard API (account isolation, one-time codes, scan tickets, received time) |
+| Add-on | 81 tests | every card rendered for real backend responses through a strict CardService double (Gmail's render-time rules), hostile-string escaping, failure paths, the inbox-scan adapter |
+| Dashboard | 6 tests | received-time filtering for the slider (boundaries, months, daylight saving) |
+| Benchmark | `eval/reproduce.py` | the current engine reproduces every per-email verdict and metric of the committed v4 benchmark |
 | Development cases | 41 pre-registered, labelled (`backend/tests/phase3/`) | Ground truth committed before the first run. Baseline: 11/20 malicious detected, 3 false positives. Now: 18/20 detected, 0 false positives. **Development tests, not a benchmark;** see `docs/TESTING_PLAN.md` |
 
 ## 7. Troubleshooting
@@ -248,6 +280,8 @@ node addon/tests/contract.mjs http://127.0.0.1:8787 "$(grep MAILLENS_API_KEY bac
 | No MailLens icon | The test deployment isn't installed (Step 5), or Gmail needs a reload |
 | `clasp create-script` changed `addon/appsscript.json` | `setup-addon.sh` restores it; otherwise run `git checkout addon/appsscript.json` |
 | Backend logs | `docker logs maillens` |
+| Dashboard says "link has expired" | Launch codes work once and sessions last 8 hours: open it again from Gmail |
+| Scan Inbox shows "Continue in a Google window" | Your browser blocked Google's sign-in inside the frame, or Google wants a one-time consent: click it and approve |
 
 ## 8. Limitations and trade-offs
 
@@ -269,6 +303,11 @@ limitations that affect the open email, such as mailbox access being off or an u
   Sent-mail headers and the open email.
 - **Ordinal rules over fitted weights:** there's no labelled data, so numeric precision would be invented.
 
+**Realistic next steps:** sender and domain reputation (domain age, threat intelligence) behind an explicit
+allow-list for outbound calls; a guarded learned intent classifier for requests outside the fixed action
+vocabulary, validated on a new holdout; attachment sandboxing; a hosted backend with managed TLS instead
+of a quick tunnel.
+
 ## 9. Repository layout and further docs
 
 ```
@@ -278,11 +317,14 @@ dashboard/  Security Console (React + Vite), served by the backend at /dashboard
 demo/       Synthetic demo-mailbox generator (build_seed.py)
 seeder/     Apps Script project that inserts the demo emails (gmail.insert only)
 scripts/    run-backend-docker, start-tunnel, setup-addon, setup-seeder, push-addon, gas_api helper
-docs/       Design and verification documents
+docs/       Design and verification documents (start with DEMO_GUIDE.md)
+eval/       Synthetic benchmarks (v4 is primary), metrics.json, reproduce.py
+final/      Clean release export of the above (generated by scripts/make-release.sh)
 ```
 
 | Document | Contents |
 |---|---|
+| `docs/DEMO_GUIDE.md` | Interview demo: emails to show, talking points, recovery steps, fresh-account checklist |
 | `docs/SECURITY_QA_REPORT.md` | Phase 3 audit: findings, fixes, PASS / FAIL / NOT VERIFIED |
 | `docs/EVALUATION_REPORT.md` | **Primary evaluation:** v4 benchmark (200 new synthetic cases; engines frozen before it was written): retained engine precision 0.97, recall 0.63, FPR 0.02 (previous engine: recall 0.51, same FPR). History: `EVALUATION_REPORT_v3.md`, `_v2`, `_v1`; `ENGINE_COMPARISON.md` |
 | `docs/TESTING_PLAN.md` | Development testing vs. independent evaluation, evaluation policy |

@@ -12,6 +12,6 @@ fi
 docker build -q -f "$ROOT/backend/Dockerfile" -t maillens-backend "$ROOT" >/dev/null
 docker rm -f "${MAILLENS_CONTAINER:-maillens}" >/dev/null 2>&1 || true
 # Bound to localhost only: the public HTTPS entry point is your own tunnel (scripts/start-tunnel.sh).
-docker run -d --name "${MAILLENS_CONTAINER:-maillens}" --restart unless-stopped -p "127.0.0.1:${MAILLENS_PORT:-8787}:8080" --env-file "$ENV" -v maillens-data:/data maillens-backend >/dev/null
+docker run -d --name "${MAILLENS_CONTAINER:-maillens}" --restart unless-stopped -p "127.0.0.1:${MAILLENS_PORT:-8787}:8080" --env-file "$ENV" -v "${MAILLENS_VOLUME:-maillens-data}":/data maillens-backend >/dev/null
 for _ in $(seq 1 20); do curl -fs http://127.0.0.1:${MAILLENS_PORT:-8787}/healthz >/dev/null 2>&1 && break; sleep 1; done
 curl -fs "http://127.0.0.1:${MAILLENS_PORT:-8787}/healthz" && echo "  <- backend is up on http://127.0.0.1:${MAILLENS_PORT:-8787}"
