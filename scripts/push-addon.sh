@@ -15,7 +15,8 @@ DEV=$([ "${MAILLENS_BUILD:-dev}" = "prod" ] && echo False || echo True)
 SCAN_ID_FILE="$ROOT/.run/scan-deployment-id"
 SCAN_ID="$(cat "$SCAN_ID_FILE" 2>/dev/null || true)"
 if [ -n "$SCAN_ID" ]; then SCAN_URL="https://script.google.com/macros/s/$SCAN_ID/exec"; else
-  HEAD_ID="$(cd "$ROOT" && clasp deployments 2>/dev/null | awk '/@HEAD/ {print $2}' | head -1)"
+  # No Apps Script project yet (run scripts/setup-addon.sh first) must not abort the script silently.
+  HEAD_ID="$(cd "$ROOT" && { clasp deployments 2>/dev/null || true; } | awk '/@HEAD/ {print $2}' | head -1)"
   SCAN_URL=""; [ -n "$HEAD_ID" ] && SCAN_URL="https://script.google.com/macros/s/$HEAD_ID/dev"
 fi
 echo "scan web app: ${SCAN_URL:-not available (no deployment found)}"
@@ -48,6 +49,7 @@ if [ "${DRY_RUN:-0}" = "1" ]; then
   cp "$ROOT/addon/appsscript.json" "$ROOT/.run/appsscript.dryrun.json"
   exit 0
 fi
+[ -f "$ROOT/.clasp.json" ] || { echo "No Apps Script project yet: run scripts/setup-addon.sh <your tunnel URL> first."; exit 1; }
 cd "$ROOT" && clasp push --force | tee "$ROOT/.run/push.log"
 grep -q "Pushed" "$ROOT/.run/push.log" || { echo "PUSH FAILED"; exit 1; }
 # Keep the scan web-app deployment on the code just pushed (create it once, then update in place).
