@@ -18,3 +18,4 @@ addon/Secrets.js
 backend/data/
 dashboard/node_modules/
 dashboard/dist/
+docs/DEMO_GUIDE.md
