@@ -2,7 +2,7 @@
  * Rendering: Phase 2 v3 (docs/UI_PROPOSAL.md, approved structure).
  *
  * Main card, fixed order: Risk assessment / Why ... / What could happen? / What should you do? /
- * [View detailed analysis]; View full dashboard sits next to the verdict. Headings adapt to the verdict.
+ * [View detailed analysis]; View full dashboard closes the Risk assessment block. Headings adapt to the verdict.
  *
  * Text direction (owner-selected Variant C, verified in Hebrew Gmail): CardService has no dir or
  * alignment control, so every English line is wrapped in a Unicode isolate (LRI U+2066 ... PDI U+2069)
@@ -61,9 +61,9 @@ function buildResultCard_(r, messageId, granted, historyId) {
   var card = CardService.newCardBuilder();  // no header: Gmail already shows "MailLens" above the card
 
   // 1. Risk assessment
-  // View full dashboard sits in the assessment row's button slot, next to the verdict.
-  card.addSection(block_('Risk assessment', [assessmentWidget_(r, style).setButton(dashboardButton_(historyId || messageId)),
-    CardService.newTextParagraph().setText(ltr_(escapeHtml_(r.headline)))]));
+  // View full dashboard: its own full-width line under the summary, before "Why ...".
+  card.addSection(block_('Risk assessment', [assessmentWidget_(r, style),
+    CardService.newTextParagraph().setText(ltr_(escapeHtml_(r.headline))), dashboardButtonSet_(historyId || messageId)]));
 
   // 2. Why ... (not shown for Low)
   if (style.why && r.reasons.length) {

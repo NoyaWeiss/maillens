@@ -263,13 +263,15 @@ test('regression: a stale URL saved in user settings never overrides the deploym
   assert.strictEqual(s.managed, true);
 });
 
-test('View full dashboard: next to the verdict on the result card, top of Home; FILLED navy, same wording', () => {
+test('View full dashboard: under the summary on the result card, top of Home; FILLED navy, same wording', () => {
   const { CardService, built } = strictCardService();
   const ctx = load(CardService, false, { props: { backendUrl: 'https://b.example', apiKey: 'k' } });
   ctx.buildResultCard_(responses.t5, 'msg123', ['gmail.readonly'], 'canonical123');
   const card = built[0];
   const assessment = card.sections[0].widgets[1];  // the verdict row
-  const btn = assessment.button;                     // next to the verdict
+  assert.ok(!Object.keys(assessment).includes('button'), 'verdict row has no button slot (it truncated the label)');
+  const btn = card.sections[0].widgets[3].buttons[0];  // after the summary, before "Why ..."
+  assert.strictEqual(card.sections[0].widgets[2].kind, 'TextParagraph');
   assert.strictEqual(plain(btn.text).replace(/[⁦⁩]/g, ''), 'View full dashboard');
   assert.deepStrictEqual([btn.style, btn.bg], ['FILLED', '#1b2a4a']);
   assert.strictEqual(JSON.stringify([btn.action.fn, btn.action.params]), JSON.stringify(['onOpenDashboard', { messageId: 'canonical123' }]));
