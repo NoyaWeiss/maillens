@@ -7,7 +7,7 @@ const vm = require('vm');
 
 const ctx = {};
 vm.createContext(ctx);
-for (const f of ['Extract.js', 'Relationship.js', 'Cards.js', 'Api.js', 'Auth.js', 'Headers.js', 'Body.js']) {
+for (const f of ['Extract.js', 'Relationship.js', 'Cards.js', 'Api.js', 'Dashboard.js', 'Auth.js', 'Headers.js', 'Body.js']) {
   vm.runInContext(fs.readFileSync(path.join(__dirname, '..', f), 'utf8'), ctx, { filename: f });
 }
 

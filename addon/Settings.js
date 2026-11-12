@@ -94,10 +94,12 @@ function buildWelcomeCard_() {
       .setWrapText(true), 'mail', 'Open an email'));
   }
   card.addSection(intro);
-  card.addSection(CardService.newCardSection().addWidget(CardService.newButtonSet().addButton(
-    CardService.newTextButton().setText(ltr_(status === 'ready' ? 'Advanced settings' : 'Open advanced settings'))
+  var buttons = CardService.newButtonSet();
+  if (status === 'ready') buttons.addButton(dashboardButton_('View full dashboard', CardService.TextButtonStyle.FILLED_TONAL));
+  buttons.addButton(CardService.newTextButton().setText(ltr_(status === 'ready' ? 'Advanced settings' : 'Open advanced settings'))
       .setTextButtonStyle(status === 'ready' ? CardService.TextButtonStyle.BORDERLESS : CardService.TextButtonStyle.FILLED_TONAL)
-      .setOnClickAction(CardService.newAction().setFunctionName('onOpenAdvancedSettings')))));
+      .setOnClickAction(CardService.newAction().setFunctionName('onOpenAdvancedSettings')));
+  card.addSection(CardService.newCardSection().addWidget(buttons));
   return card.build();
 }
 

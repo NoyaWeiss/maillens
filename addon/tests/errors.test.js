@@ -10,7 +10,7 @@ function load(fetchImpl, cacheGet = () => null) {
     CardService: { newActionResponseBuilder: () => ({ setNotification(n) { this.n = n; return this; }, build() { return { notification: this.n }; } }),
       newNotification: () => ({ setText(t) { this.text = t; return this; } }) } };
   vm.createContext(ctx);
-  for (const f of ['Api.js', 'Body.js', 'Main.js', 'Settings.js']) {
+  for (const f of ['Api.js', 'Dashboard.js', 'Body.js', 'Main.js', 'Settings.js']) {
     vm.runInContext(fs.readFileSync(path.join(__dirname, '..', f), 'utf8'), ctx, { filename: f });
   }
   return ctx;

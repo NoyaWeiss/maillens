@@ -120,6 +120,33 @@ emails (`.example` domains) to your inbox and Sent folder.
 - With no email open, click MailLens: **"Analysis service ready"** appears.
 - Open "Re: PO 4471 - office supplies" (the newest message): **High risk**.
 
+### Step 8: Open the Security Console (dashboard)
+The dashboard is a React app served by **the same backend**, behind your own HTTPS tunnel. Nothing extra to
+install: `run-backend-docker.sh` builds it into the image.
+
+- **From Gmail:** on the MailLens Welcome screen choose **View full dashboard** (your account's activity), or on a
+  result card choose **Full dashboard** (opens with that email selected). It opens in a new tab.
+- **Directly:** `<your tunnel URL>/dashboard/` shows Detection Performance, How MailLens Works and a labelled
+  **Demo Mode** (synthetic emails). Your own activity appears only when opened from Gmail.
+
+Why it works this way (verified against Google's documentation):
+- Gmail can open links only to **HTTPS** prefixes allow-listed in the manifest (`openLinkUrlPrefixes`), so a
+  `http://localhost` dashboard can't be opened from the add-on. `push-addon.sh` allow-lists exactly
+  `https://<your tunnel host>/dashboard/`.
+- **No new OAuth scopes.** Each Google account gets a random account key in Apps Script user properties (private
+  to that user). The backend stores only an HMAC of it, so accounts are isolated server-side.
+- **On click,** the add-on asks the backend (API key + account key) for a **one-time launch code** that expires in
+  2 minutes. Only that code goes in the URL fragment: never an OAuth token, API key, email address or content.
+  The dashboard exchanges it for an 8-hour session bound to this browser tab. The selected email is resolved
+  server-side from that account's own history.
+- **History** keeps subject, sender and the analysis result (never the body) for 30 days, at most 500 emails per
+  account, in the `maillens-data` Docker volume. **Clear history** on the Overview deletes it.
+- **Tunnel restarts:** a quick tunnel gets a new URL on restart. Run `./scripts/push-addon.sh` again so both
+  allow-lists match the new host.
+
+Local development without Docker: `cd dashboard && npm ci && npm run build` (the backend serves `dashboard/dist`),
+or `npm run dev` (Vite at http://localhost:5173/dashboard/, proxying `/v1` to the backend on 8787).
+
 ## 3. Demo walkthrough
 
 | Email (seeded) | What it tests | Expected |
@@ -198,8 +225,8 @@ node addon/tests/contract.mjs http://127.0.0.1:8787 "$(grep MAILLENS_API_KEY bac
 
 | Suite | Count | What it covers |
 |---|---|---|
-| Backend | 243 tests | per-signal must-fire / must-not-fire; engine invariants (exhaustive grid); the demo scenarios; adversarial input; grounding of explanations; a decision snapshot proving presentation changes never alter verdicts |
-| Add-on | 73 tests | every card rendered for real backend responses through a strict CardService double (Gmail's render-time rules), hostile-string escaping, failure paths |
+| Backend | 249 tests | per-signal must-fire / must-not-fire; engine invariants (exhaustive grid); the demo scenarios; adversarial input; grounding of explanations; a decision snapshot proving presentation changes never alter verdicts |
+| Add-on | 74 tests | every card rendered for real backend responses through a strict CardService double (Gmail's render-time rules), hostile-string escaping, failure paths |
 | Development cases | 41 pre-registered, labelled (`backend/tests/phase3/`) | Ground truth committed before the first run. Baseline: 11/20 malicious detected, 3 false positives. Now: 18/20 detected, 0 false positives. **Development tests, not a benchmark;** see `docs/TESTING_PLAN.md` |
 
 ## 7. Troubleshooting
@@ -238,7 +265,8 @@ limitations that affect the open email, such as mailbox access being off or an u
 
 ```
 addon/      Gmail add-on (Apps Script): extraction, cards, tests (node --test)
-backend/    FastAPI service: signals, decision engine, presentation, tests (pytest), Dockerfile
+backend/    FastAPI service: signals, decision engine, presentation, dashboard API + history, tests (pytest), Dockerfile
+dashboard/  Security Console (React + Vite), served by the backend at /dashboard/
 demo/       Synthetic demo-mailbox generator (build_seed.py)
 seeder/     Apps Script project that inserts the demo emails (gmail.insert only)
 scripts/    run-backend-docker, start-tunnel, setup-addon, setup-seeder, push-addon, gas_api helper

@@ -32,6 +32,8 @@ function strictCardService() {
       setHint(v) { record(`${kind}.hint`, v); return this; },
       setValue(v) { w.value = v; strings.push(String(v)); return this; },
       setFieldName(v) { w.field = v; return this; },
+      setButton(b) { w.button = b; return this; },
+      setOnClickAction(a) { w.action = a; return this; },
     }));
   };
   const built = [];
@@ -76,7 +78,7 @@ function strictCardService() {
     newTextButton: () => widget('TextButton'),
     newButtonSet: () => widget('ButtonSet'),
     newTextInput: () => widget('TextInput'),
-    newAction: () => chain({}),
+    newAction: () => { const a = {}; return chain(Object.assign(a, { setFunctionName(n) { a.fn = n; return this; }, setParameters(p) { a.params = p; return this; } })); },
   };
   return { CardService, errors, built, strings };
 }
@@ -90,7 +92,7 @@ function load(cs, dev, opts = {}) {
     UrlFetchApp: { fetch: () => { if (opts.statusCode === 'throw') throw new Error('dns'); return { getResponseCode: () => opts.statusCode || 200 }; } } };
   if (dev) ctx.DEV_DEFAULTS = { url: 'https://x', apiKey: 'k', dev: true };
   vm.createContext(ctx);
-  for (const f of ['Cards.js', 'Auth.js', 'Extract.js', 'Settings.js', 'RenderTest.js']) {
+  for (const f of ['Cards.js', 'Auth.js', 'Extract.js', 'Settings.js', 'RenderTest.js', 'Dashboard.js']) {
     vm.runInContext(fs.readFileSync(path.join(__dirname, '..', f), 'utf8'), ctx, { filename: f });
   }
   return ctx;
@@ -258,4 +260,14 @@ test('regression: a stale URL saved in user settings never overrides the deploym
   assert.strictEqual(s.url, 'https://current.trycloudflare.com');
   assert.strictEqual(s.apiKey, 'current');
   assert.strictEqual(s.managed, true);
+});
+
+test('dashboard entry points: main card (with this email) and Welcome screen (account level)', () => {
+  const { CardService, built } = strictCardService();
+  const ctx = load(CardService, false, { props: { backendUrl: 'https://b.example', apiKey: 'k' } });
+  ctx.buildResultCard_(responses.t5, 'msg123', ['gmail.readonly']);
+  const assessment = built[0].sections[0].widgets[1];
+  assert.strictEqual(plain(assessment.button.text).replace(/[⁦⁩]/g, ''), 'Full dashboard');
+  assert.strictEqual(JSON.stringify([assessment.button.action.fn, assessment.button.action.params]), JSON.stringify(['onOpenDashboard', { messageId: 'msg123' }]));
+  assert.strictEqual(built[0].sections[0].widgets.length, 3, 'Risk assessment keeps its approved widgets');
 });

@@ -28,8 +28,10 @@ u = urlsplit(os.environ["URL"])
 assert u.scheme == "https" and u.hostname and not u.path.strip("/"), "backend URL must be an https origin"
 m = json.load(open(sys.argv[1]))
 m["urlFetchWhitelist"] = ["https://gmail.googleapis.com/", f"https://{u.hostname}/"]  # top-level manifest field
+# OpenLink must be HTTPS and allow-listed: only this deployment's dashboard path (Security Console).
+m["addOns"]["common"]["openLinkUrlPrefixes"] = [f"https://{u.hostname}/dashboard/"]
 json.dump(m, open(sys.argv[1], "w"), indent=2)
-print("allow-list:", m["urlFetchWhitelist"])
+print("allow-list:", m["urlFetchWhitelist"], "| open-link:", m["addOns"]["common"]["openLinkUrlPrefixes"])
 PY
 if [ "${DRY_RUN:-0}" = "1" ]; then
   echo "DRY_RUN: generated addon/Secrets.js and the manifest allow-list above; nothing pushed."

@@ -20,7 +20,7 @@ function onGmailMessage(e) {
     step = 'extract message';
     var payload = buildPayload_(message, granted, timer);
     step = 'call backend';
-    var result = timer.time('backend', function () { return callAnalyze_(settings, payload, timer.summary()); });
+    var result = timer.time('backend', function () { return callAnalyze_(settings, payload, timer.summary(), messageId); });
     step = 'render';
     var card = timer.time('render', function () { return buildResultCard_(result, messageId, granted); });
     if (isDevBuild_()) rememberForDevTools_(messageId, result.request_id);

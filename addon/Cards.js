@@ -61,7 +61,9 @@ function buildResultCard_(r, messageId, granted) {
   var card = CardService.newCardBuilder();  // no header: Gmail already shows "MailLens" above the card
 
   // 1. Risk assessment
-  card.addSection(block_('Risk assessment', [assessmentWidget_(r, style),
+  // Compact "Full dashboard" link sits in the assessment row's button slot; the approved layout is unchanged.
+  card.addSection(block_('Risk assessment', [assessmentWidget_(r, style)
+    .setButton(dashboardButton_('Full dashboard', CardService.TextButtonStyle.BORDERLESS, messageId)),
     CardService.newTextParagraph().setText(ltr_(escapeHtml_(r.headline)))]));
 
   // 2. Why ... (not shown for Low)
