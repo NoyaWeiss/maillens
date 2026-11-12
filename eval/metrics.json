@@ -1,0 +1,469 @@
+{
+ "engine_commit_frozen": "00bb9d1e041b0e9761c4ee28eb37741a2a576d0a",
+ "engine_hash": "8ef706999ca4add2",
+ "alert_policy": "SUSPICIOUS/HIGH = detected; LOW = not detected; INCONCLUSIVE reported separately",
+ "primary_inconclusive_as_not_detected": {
+  "n": 200,
+  "TP": 69,
+  "FN": 31,
+  "FP": 11,
+  "TN": 89,
+  "precision": 0.863,
+  "precision_ci95": [
+   0.77,
+   0.921
+  ],
+  "recall": 0.69,
+  "recall_ci95": [
+   0.594,
+   0.772
+  ],
+  "f1": 0.767,
+  "fpr": 0.11,
+  "fpr_ci95": [
+   0.063,
+   0.186
+  ],
+  "accuracy": 0.79
+ },
+ "sensitivity_inconclusive_excluded": {
+  "n": 199,
+  "TP": 69,
+  "FN": 30,
+  "FP": 11,
+  "TN": 89,
+  "precision": 0.863,
+  "precision_ci95": [
+   0.77,
+   0.921
+  ],
+  "recall": 0.697,
+  "recall_ci95": [
+   0.6,
+   0.779
+  ],
+  "f1": 0.771,
+  "fpr": 0.11,
+  "fpr_ci95": [
+   0.063,
+   0.186
+  ],
+  "accuracy": 0.794
+ },
+ "verdict_distribution": {
+  "Malicious": {
+   "HIGH": 40,
+   "SUSPICIOUS": 29,
+   "LOW": 30,
+   "INCONCLUSIVE": 1
+  },
+  "Legitimate": {
+   "LOW": 89,
+   "HIGH": 9,
+   "SUSPICIOUS": 2
+  }
+ },
+ "alert_gates": {
+  "Malicious": {
+   "H-B": 33,
+   "S-D": 22,
+   "H-A": 3,
+   "S-A": 7,
+   "H-C": 4
+  },
+  "Legitimate": {
+   "H-B": 9,
+   "S-D": 2
+  }
+ },
+ "by_category": {
+  "BEC (executive impersonation)": {
+   "label": "Malicious",
+   "n": 10,
+   "alerts": 10,
+   "alert_rate": 1.0,
+   "alert_rate_ci95": [
+    0.722,
+    1.0
+   ],
+   "inconclusive": 0,
+   "verdicts": {
+    "HIGH": 9,
+    "SUSPICIOUS": 1
+   }
+  },
+  "BEC (payroll diversion)": {
+   "label": "Malicious",
+   "n": 8,
+   "alerts": 8,
+   "alert_rate": 1.0,
+   "alert_rate_ci95": [
+    0.676,
+    1.0
+   ],
+   "inconclusive": 0,
+   "verdicts": {
+    "HIGH": 7,
+    "SUSPICIOUS": 1
+   }
+  },
+  "OAuth consent phishing": {
+   "label": "Malicious",
+   "n": 6,
+   "alerts": 6,
+   "alert_rate": 1.0,
+   "alert_rate_ci95": [
+    0.61,
+    1.0
+   ],
+   "inconclusive": 0,
+   "verdicts": {
+    "SUSPICIOUS": 5,
+    "HIGH": 1
+   }
+  },
+  "account / security notification": {
+   "label": "Legitimate",
+   "n": 10,
+   "alerts": 3,
+   "alert_rate": 0.3,
+   "alert_rate_ci95": [
+    0.108,
+    0.603
+   ],
+   "inconclusive": 0,
+   "verdicts": {
+    "HIGH": 3,
+    "LOW": 7
+   }
+  },
+  "compromised known contact": {
+   "label": "Malicious",
+   "n": 8,
+   "alerts": 2,
+   "alert_rate": 0.25,
+   "alert_rate_ci95": [
+    0.071,
+    0.591
+   ],
+   "inconclusive": 0,
+   "verdicts": {
+    "SUSPICIOUS": 2,
+    "LOW": 6
+   }
+  },
+  "credential phishing (brand impersonation)": {
+   "label": "Malicious",
+   "n": 10,
+   "alerts": 5,
+   "alert_rate": 0.5,
+   "alert_rate_ci95": [
+    0.237,
+    0.763
+   ],
+   "inconclusive": 0,
+   "verdicts": {
+    "HIGH": 3,
+    "SUSPICIOUS": 2,
+    "LOW": 5
+   }
+  },
+  "credential phishing (plain, clean infrastructure)": {
+   "label": "Malicious",
+   "n": 6,
+   "alerts": 0,
+   "alert_rate": 0.0,
+   "alert_rate_ci95": [
+    0.0,
+    0.39
+   ],
+   "inconclusive": 1,
+   "verdicts": {
+    "LOW": 5,
+    "INCONCLUSIVE": 1
+   }
+  },
+  "evasion attempt": {
+   "label": "Malicious",
+   "n": 10,
+   "alerts": 4,
+   "alert_rate": 0.4,
+   "alert_rate_ci95": [
+    0.168,
+    0.687
+   ],
+   "inconclusive": 0,
+   "verdicts": {
+    "HIGH": 3,
+    "LOW": 6,
+    "SUSPICIOUS": 1
+   }
+  },
+  "forwarded phish reported to IT": {
+   "label": "Legitimate",
+   "n": 6,
+   "alerts": 6,
+   "alert_rate": 1.0,
+   "alert_rate_ci95": [
+    0.61,
+    1.0
+   ],
+   "inconclusive": 0,
+   "verdicts": {
+    "HIGH": 6
+   }
+  },
+  "invoice": {
+   "label": "Legitimate",
+   "n": 10,
+   "alerts": 0,
+   "alert_rate": 0.0,
+   "alert_rate_ci95": [
+    0.0,
+    0.278
+   ],
+   "inconclusive": 0,
+   "verdicts": {
+    "LOW": 10
+   }
+  },
+  "legitimate SSO invitation": {
+   "label": "Legitimate",
+   "n": 4,
+   "alerts": 0,
+   "alert_rate": 0.0,
+   "alert_rate_ci95": [
+    0.0,
+    0.49
+   ],
+   "inconclusive": 0,
+   "verdicts": {
+    "LOW": 4
+   }
+  },
+  "legitimate attachment": {
+   "label": "Legitimate",
+   "n": 8,
+   "alerts": 0,
+   "alert_rate": 0.0,
+   "alert_rate_ci95": [
+    0.0,
+    0.324
+   ],
+   "inconclusive": 0,
+   "verdicts": {
+    "LOW": 8
+   }
+  },
+  "legitimate payment-detail change": {
+   "label": "Legitimate",
+   "n": 6,
+   "alerts": 0,
+   "alert_rate": 0.0,
+   "alert_rate_ci95": [
+    0.0,
+    0.39
+   ],
+   "inconclusive": 0,
+   "verdicts": {
+    "LOW": 6
+   }
+  },
+  "malware / malicious attachment": {
+   "label": "Malicious",
+   "n": 10,
+   "alerts": 7,
+   "alert_rate": 0.7,
+   "alert_rate_ci95": [
+    0.397,
+    0.892
+   ],
+   "inconclusive": 0,
+   "verdicts": {
+    "HIGH": 1,
+    "SUSPICIOUS": 6,
+    "LOW": 3
+   }
+  },
+  "newsletter / marketing": {
+   "label": "Legitimate",
+   "n": 10,
+   "alerts": 0,
+   "alert_rate": 0.0,
+   "alert_rate_ci95": [
+    0.0,
+    0.278
+   ],
+   "inconclusive": 0,
+   "verdicts": {
+    "LOW": 10
+   }
+  },
+  "payment redirection": {
+   "label": "Malicious",
+   "n": 10,
+   "alerts": 9,
+   "alert_rate": 0.9,
+   "alert_rate_ci95": [
+    0.596,
+    0.982
+   ],
+   "inconclusive": 0,
+   "verdicts": {
+    "SUSPICIOUS": 4,
+    "HIGH": 5,
+    "LOW": 1
+   }
+  },
+  "platform / ticketing / list mail": {
+   "label": "Legitimate",
+   "n": 10,
+   "alerts": 0,
+   "alert_rate": 0.0,
+   "alert_rate_ci95": [
+    0.0,
+    0.278
+   ],
+   "inconclusive": 0,
+   "verdicts": {
+    "LOW": 10
+   }
+  },
+  "routine business conversation": {
+   "label": "Legitimate",
+   "n": 12,
+   "alerts": 0,
+   "alert_rate": 0.0,
+   "alert_rate_ci95": [
+    0.0,
+    0.243
+   ],
+   "inconclusive": 0,
+   "verdicts": {
+    "LOW": 12
+   }
+  },
+  "security awareness / newsletter about scams": {
+   "label": "Legitimate",
+   "n": 10,
+   "alerts": 0,
+   "alert_rate": 0.0,
+   "alert_rate_ci95": [
+    0.0,
+    0.278
+   ],
+   "inconclusive": 0,
+   "verdicts": {
+    "LOW": 10
+   }
+  },
+  "social engineering (MFA code / remote access)": {
+   "label": "Malicious",
+   "n": 6,
+   "alerts": 6,
+   "alert_rate": 1.0,
+   "alert_rate_ci95": [
+    0.61,
+    1.0
+   ],
+   "inconclusive": 0,
+   "verdicts": {
+    "HIGH": 5,
+    "SUSPICIOUS": 1
+   }
+  },
+  "unfamiliar or new address (benign)": {
+   "label": "Legitimate",
+   "n": 6,
+   "alerts": 2,
+   "alert_rate": 0.333,
+   "alert_rate_ci95": [
+    0.097,
+    0.7
+   ],
+   "inconclusive": 0,
+   "verdicts": {
+    "LOW": 4,
+    "SUSPICIOUS": 2
+   }
+  },
+  "urgent internal request": {
+   "label": "Legitimate",
+   "n": 8,
+   "alerts": 0,
+   "alert_rate": 0.0,
+   "alert_rate_ci95": [
+    0.0,
+    0.324
+   ],
+   "inconclusive": 0,
+   "verdicts": {
+    "LOW": 8
+   }
+  },
+  "vendor impersonation (look-alike domain)": {
+   "label": "Malicious",
+   "n": 8,
+   "alerts": 4,
+   "alert_rate": 0.5,
+   "alert_rate_ci95": [
+    0.215,
+    0.785
+   ],
+   "inconclusive": 0,
+   "verdicts": {
+    "HIGH": 2,
+    "LOW": 4,
+    "SUSPICIOUS": 2
+   }
+  },
+  "vendor thread hijack": {
+   "label": "Malicious",
+   "n": 8,
+   "alerts": 8,
+   "alert_rate": 1.0,
+   "alert_rate_ci95": [
+    0.676,
+    1.0
+   ],
+   "inconclusive": 0,
+   "verdicts": {
+    "HIGH": 4,
+    "SUSPICIOUS": 4
+   }
+  }
+ },
+ "by_difficulty": {
+  "Malicious/easy": {
+   "n": 12,
+   "alerts": 8,
+   "alert_rate": 0.667
+  },
+  "Malicious/medium": {
+   "n": 50,
+   "alerts": 41,
+   "alert_rate": 0.82
+  },
+  "Malicious/hard": {
+   "n": 38,
+   "alerts": 20,
+   "alert_rate": 0.526
+  },
+  "Legitimate/easy": {
+   "n": 28,
+   "alerts": 0,
+   "alert_rate": 0.0
+  },
+  "Legitimate/medium": {
+   "n": 44,
+   "alerts": 3,
+   "alert_rate": 0.068
+  },
+  "Legitimate/hard": {
+   "n": 28,
+   "alerts": 8,
+   "alert_rate": 0.286
+  }
+ },
+ "inconclusive_total": 1
+}
