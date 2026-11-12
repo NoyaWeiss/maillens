@@ -43,7 +43,7 @@ install_clasp() {
   command -v clasp >/dev/null && { ok "clasp found"; return; }
   install_node
   ask "clasp (Google Apps Script CLI) is missing. Install @google/clasp@$CLASP_VERSION into .tools/ (no sudo)?" || die "clasp is required. Install it with: npm install -g @google/clasp"
-  npm install --prefix "$TOOLS/clasp" --no-audit --no-fund --loglevel=error "@google/clasp@$CLASP_VERSION" >/dev/null || die "npm could not install clasp (network?). Re-run to retry."
+  NPM_CONFIG_UPDATE_NOTIFIER=false npm install --prefix "$TOOLS/clasp" --no-audit --no-fund --loglevel=error "@google/clasp@$CLASP_VERSION" >/dev/null || die "npm could not install clasp (network?). Re-run to retry."
   ln -sf "$TOOLS/clasp/node_modules/.bin/clasp" "$BIN/clasp"
   clasp --version >/dev/null 2>&1 && ok "clasp $(clasp --version | head -1) installed in .tools/" || die "clasp did not start"
 }
