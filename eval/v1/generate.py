@@ -15,7 +15,7 @@ import random
 from pathlib import Path
 
 RNG = random.Random(20261112)
-OUT = Path(__file__).with_name("dataset.jsonl")
+OUT = Path(__file__).with_name("dataset.jsonl")  # eval/v1/ (historical baseline)
 
 # ------------------------------------------------------------------ synthetic universe
 ORG = "harborview.example"

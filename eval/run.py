@@ -1,8 +1,9 @@
 """Phase 5 blind evaluation of the FROZEN engine on eval/dataset.jsonl.
 
-Usage (from repo root):  cd backend && uv run python ../eval/run.py
-Outputs: eval/results.jsonl (per case), eval/metrics.json (aggregate, dashboard-ready),
-         docs/EVALUATION_REPORT.md (generated sections). Refuses to run if the engine changed since the freeze.
+Usage:  cd backend && uv run python ../eval/run.py v2      (evaluation directory under eval/)
+Reads eval/<v>/FREEZE.md and eval/<v>/dataset.jsonl; writes eval/<v>/results.jsonl and eval/<v>/metrics.json.
+Refuses to run if the engine differs from the one frozen for that evaluation. (v1 was frozen at commit
+00bb9d1; reproduce it with `git checkout 00bb9d1`, its engine no longer matches HEAD.)
 """
 
 import collections
@@ -60,12 +61,13 @@ def metrics(rows, inconclusive_as="not_detected"):
 
 
 def main():
-    freeze = (ROOT / "eval/FREEZE.md").read_text()
+    V = ROOT / "eval" / (sys.argv[1] if len(sys.argv) > 1 else "v2")
+    freeze = (V / "FREEZE.md").read_text()
     frozen = re.search(r"`([0-9a-f]{16})`", freeze).group(1)
     if engine_hash() != frozen:
         sys.exit(f"Engine changed since the freeze ({engine_hash()} != {frozen}); refusing to report.")
 
-    cases = [json.loads(l) for l in (ROOT / "eval/dataset.jsonl").read_text().splitlines()]
+    cases = [json.loads(l) for l in (V / "dataset.jsonl").read_text().splitlines()]
     rows = []
     for c in cases:
         r = analyze(AnalyzeRequest.model_validate(c["input"]), c["id"])[0]
@@ -78,7 +80,7 @@ def main():
                                  "FP" if r.verdict in DETECTED else "TN"),
                      "inconclusive": r.verdict == "INCONCLUSIVE"})
     assert len(rows) == 200, len(rows)
-    (ROOT / "eval/results.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows))
+    (V / "results.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows))
 
     primary = metrics(rows)
     excl = metrics(rows, "exclude")
@@ -110,7 +112,7 @@ def main():
            "primary_inconclusive_as_not_detected": primary, "sensitivity_inconclusive_excluded": excl,
            "verdict_distribution": verdicts, "alert_gates": gates, "by_category": cats, "by_difficulty": diff,
            "inconclusive_total": sum(r["inconclusive"] for r in rows)}
-    (ROOT / "eval/metrics.json").write_text(json.dumps(out, indent=1))
+    (V / "metrics.json").write_text(json.dumps(out, indent=1))
     print(json.dumps({k: out[k] for k in ("primary_inconclusive_as_not_detected", "sensitivity_inconclusive_excluded",
                                           "verdict_distribution", "inconclusive_total")}, indent=0))
 
