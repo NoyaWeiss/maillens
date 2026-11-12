@@ -103,6 +103,17 @@ function buildWelcomeCard_() {
   return card.build();
 }
 
+/** Email-context card when MailLens isn't configured (the Home card is only for the non-email view). */
+function buildSetupRequiredCard_() {
+  var view = STATUS_VIEW.setup;
+  return CardService.newCardBuilder().addSection(CardService.newCardSection()
+    .addWidget(withIcon_(CardService.newDecoratedText()
+      .setText(ltrLines_(['<b>' + view.title + '</b>', escapeHtml_(view.text)])).setWrapText(true), view.icon, view.title))
+    .addWidget(CardService.newButtonSet().addButton(CardService.newTextButton().setText(ltr_('Open advanced settings'))
+      .setTextButtonStyle(CardService.TextButtonStyle.FILLED_TONAL)
+      .setOnClickAction(CardService.newAction().setFunctionName('onOpenAdvancedSettings'))))).build();
+}
+
 // ------------------------------------------------------------------ Advanced settings
 function onOpenAdvancedSettings() {
   return CardService.newActionResponseBuilder()

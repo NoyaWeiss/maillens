@@ -6,7 +6,8 @@
 
 function onGmailMessage(e) {
   var settings = getSettings_();
-  if (!settings.url || !settings.apiKey) return buildWelcomeCard_();  // shows "Setup required"
+  // Never show the Home card inside an email: an unconfigured add-on gets a small setup card here instead.
+  if (!settings.url || !settings.apiKey) return buildSetupRequiredCard_();
   var granted = getGrantedScopes_();
   ensureCoreScopes_(granted); // outside try: may raise Google's re-consent prompt
 

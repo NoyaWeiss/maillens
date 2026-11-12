@@ -286,3 +286,14 @@ test('View full dashboard: below View detailed analysis on the result card, top 
   for (const gone of ['The result appears here automatically.', 'Connected and ready to analyze emails.', 'checks whether an email is what it claims'])
     assert.ok(!homeText.includes(gone), gone);
 });
+
+test('an unconfigured add-on never shows the Home card inside an email', () => {
+  const { CardService, built } = strictCardService();
+  const ctx = load(CardService, false, { props: {} });
+  for (const f of ['Main.js', 'Api.js', 'Body.js']) vm.runInContext(fs.readFileSync(path.join(__dirname, '..', f), 'utf8'), ctx, { filename: f });
+  ctx.getSettings_ = () => ({ url: '', apiKey: '' });
+  const card = ctx.onGmailMessage({ gmail: { messageId: 'm1', accessToken: 't' } });
+  assert.ok(!card.header, 'no "Welcome to MailLens" header');
+  assert.match(plain(card.sections[0].widgets[0].text), /Setup required/);
+  assert.ok(!mainText(card).includes('View full dashboard'));
+});
