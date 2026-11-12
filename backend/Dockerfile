@@ -1,7 +1,7 @@
 # MailLens backend + Security Console. Build from the repo root:
 #   docker build -f backend/Dockerfile -t maillens-backend .
 # Stateless analysis, no outbound calls, non-root. The only state is the per-account dashboard history
-# in /data (mount a volume to keep it across restarts; it expires after 30 days).
+# in /data (mount a volume to keep it across restarts; entries expire after 1 year).
 
 # 1) Dashboard (static files; Node is needed only at build time)
 FROM node:20-alpine AS dashboard

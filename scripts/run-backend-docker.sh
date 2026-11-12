@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Build and run the MailLens backend + Security Console in Docker on http://127.0.0.1:8787 (production mode).
-# Dashboard history is kept in the Docker volume "maillens-data" (30-day retention).
+# Dashboard history is kept in the Docker volume "maillens-data" (1-year retention).
 # Creates backend/.env with a fresh random API key if it doesn't exist. Requires: Docker, python3.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
