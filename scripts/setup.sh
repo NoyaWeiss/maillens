@@ -63,10 +63,28 @@ if [ "$MODE" = "--backend-only" ]; then
 fi
 
 step "4/4 Gmail add-on (your own Apps Script project)"
-if [ ! -f "$HOME/.clasprc.json" ]; then
-  todo "Google login needed once: a browser window opens for 'clasp login'. Use your TEST Google account."
-  read -r -p "   Press Enter to continue... " _ || fail "Google login needs an interactive terminal: run $ROOT/scripts/setup.sh in Terminal."
-  clasp login || fail "clasp login did not complete; re-run $ROOT/scripts/setup.sh"
+# MailLens uses its OWN named clasp login (never your default clasp login), and you confirm the account.
+CLASP_USER="${MAILLENS_CLASP_USER:-$(cat .run/clasp-user 2>/dev/null || { [ -f .clasp.json ] && echo default || echo maillens; })}"
+echo "$CLASP_USER" > .run/clasp-user
+acct() { clasp --user "$CLASP_USER" show-authorized-user 2>/dev/null | sed -n 's/.*logged in as \(.*\)\.$/\1/p'; }
+confirm() { read -r -p "   MailLens will use the Google account $1. Is this your TEST account? [y/N] " a || fail "No terminal to confirm the Google account: run in Terminal, or set MAILLENS_GOOGLE_ACCOUNT=<email>."; [ "$a" = y ] || [ "$a" = Y ]; }
+ACCOUNT="$(acct)"
+if [ -n "$ACCOUNT" ]; then
+  if [ -n "${MAILLENS_GOOGLE_ACCOUNT:-}" ]; then [ "$ACCOUNT" = "$MAILLENS_GOOGLE_ACCOUNT" ] || { clasp --user "$CLASP_USER" logout >/dev/null; ACCOUNT=""; }
+  elif ! confirm "$ACCOUNT"; then clasp --user "$CLASP_USER" logout >/dev/null; ACCOUNT=""; fi
+fi
+if [ -z "$ACCOUNT" ]; then
+  todo "Google sign-in: a browser opens. Choose your TEST account (click 'Use another account' if it isn't listed), then Allow."
+  read -r -p "   Press Enter to open the browser... " _ || fail "Google login needs an interactive terminal: run $ROOT/scripts/setup.sh in Terminal."
+  clasp --user "$CLASP_USER" login || fail "Google sign-in did not complete; re-run $ROOT/scripts/setup.sh"
+  ACCOUNT="$(acct)"; [ -n "$ACCOUNT" ] || fail "could not read the signed-in account; re-run $ROOT/scripts/setup.sh"
+  [ -n "${MAILLENS_GOOGLE_ACCOUNT:-}" ] && { [ "$ACCOUNT" = "$MAILLENS_GOOGLE_ACCOUNT" ] || fail "signed in as $ACCOUNT, expected $MAILLENS_GOOGLE_ACCOUNT"; } || confirm "$ACCOUNT" || fail "re-run $ROOT/scripts/setup.sh and sign in with your test account"
+fi
+ok "Google account: $ACCOUNT"
+# The Apps Script project must belong to this account: otherwise keep the old one aside and create a new one.
+if [ -f .clasp.json ] && [ "$(cat .run/clasp-project-account 2>/dev/null)" != "$ACCOUNT" ]; then
+  TS=$(date +%Y%m%d%H%M%S); mv .clasp.json ".run/old-project-$TS.clasp.json"; [ -f .run/scan-deployment-id ] && mv .run/scan-deployment-id ".run/old-scan-deployment-$TS"
+  todo "the existing Apps Script project wasn't created with $ACCOUNT; a new project will be created (old reference kept in .run/)"
 fi
 OUT="$(./scripts/setup-addon.sh "$URL" 2>&1)"; STATUS=$?
 echo "$OUT" | grep -E "allow-list|Pushed|Install it" | sed 's/^/   /'
@@ -78,6 +96,7 @@ if [ $STATUS -ne 0 ]; then
   echo "$OUT" | tail -5; fail "the add-on upload failed (details above); fix and re-run $ROOT/scripts/setup.sh"
 fi
 SID="$(python3 -c "import json;print(json.load(open('.clasp.json'))['scriptId'])")"
+echo "$ACCOUNT" > .run/clasp-project-account
 ok "add-on uploaded to your Apps Script project"
 
 if [ "$MODE" = "--with-demo" ]; then

@@ -5,6 +5,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 export PATH="$ROOT/.tools/bin:$HOME/.local/bin:$PATH"   # .tools: installed by scripts/install-tools.sh
 mkdir -p "$ROOT/.run"
+CLASP_USER="${MAILLENS_CLASP_USER:-$(cat "$ROOT/.run/clasp-user" 2>/dev/null || echo default)}"
 URL="${1:-$(cat "$ROOT/.run/url")}"
 KEY="$(grep '^MAILLENS_API_KEY=' "$ROOT/backend/.env" | cut -d= -f2-)"
 # MAILLENS_BUILD=prod produces the user-facing build: no developer tools anywhere in the UI.
@@ -16,7 +17,7 @@ SCAN_ID_FILE="$ROOT/.run/scan-deployment-id"
 SCAN_ID="$(cat "$SCAN_ID_FILE" 2>/dev/null || true)"
 if [ -n "$SCAN_ID" ]; then SCAN_URL="https://script.google.com/macros/s/$SCAN_ID/exec"; else
   # No Apps Script project yet (run scripts/setup-addon.sh first) must not abort the script silently.
-  HEAD_ID="$(cd "$ROOT" && { clasp deployments 2>/dev/null || true; } | awk '/@HEAD/ {print $2}' | head -1)"
+  HEAD_ID="$(cd "$ROOT" && { clasp --user "$CLASP_USER" deployments 2>/dev/null || true; } | awk '/@HEAD/ {print $2}' | head -1)"
   SCAN_URL=""; [ -n "$HEAD_ID" ] && SCAN_URL="https://script.google.com/macros/s/$HEAD_ID/dev"
 fi
 echo "scan web app: ${SCAN_URL:-not available (no deployment found)}"
@@ -50,14 +51,14 @@ if [ "${DRY_RUN:-0}" = "1" ]; then
   exit 0
 fi
 [ -f "$ROOT/.clasp.json" ] || { echo "No Apps Script project yet: run scripts/setup-addon.sh <your tunnel URL> first."; exit 1; }
-cd "$ROOT" && clasp push --force | tee "$ROOT/.run/push.log"
+cd "$ROOT" && clasp --user "$CLASP_USER" push --force | tee "$ROOT/.run/push.log"
 grep -q "Pushed" "$ROOT/.run/push.log" || { echo "PUSH FAILED"; exit 1; }
 # Keep the scan web-app deployment on the code just pushed (create it once, then update in place).
 if [ "${DRY_RUN:-0}" != "1" ]; then
   if [ -n "$SCAN_ID" ]; then
-    (cd "$ROOT" && clasp update-deployment "$SCAN_ID" --description "MailLens inbox scan" >/dev/null) && echo "scan web app updated (/exec)"
+    (cd "$ROOT" && clasp --user "$CLASP_USER" update-deployment "$SCAN_ID" --description "MailLens inbox scan" >/dev/null) && echo "scan web app updated (/exec)"
   else
-    NEW_ID="$(cd "$ROOT" && clasp create-deployment --description "MailLens inbox scan" 2>&1 | grep -oE 'AKfy[A-Za-z0-9_-]+' | head -1)"
+    NEW_ID="$(cd "$ROOT" && clasp --user "$CLASP_USER" create-deployment --description "MailLens inbox scan" 2>&1 | grep -oE 'AKfy[A-Za-z0-9_-]+' | head -1)"
     if [ -n "$NEW_ID" ]; then
       echo "$NEW_ID" > "$SCAN_ID_FILE"
       echo "scan web app deployed (/exec); pushing again so the add-on uses it"

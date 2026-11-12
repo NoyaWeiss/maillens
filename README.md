@@ -72,7 +72,7 @@ Automated setup complete. Two manual steps remain (Google requires them):
 | # | What | Who |
 |---|---|---|
 | 1 | Open <https://script.google.com/home/usersettings> and turn **Google Apps Script API** to **On**. Do this before Step 3; if you forget, setup stops and tells you, so turn it on and re-run Step 3. | **You** |
-| 2 | **Google login:** setup asks you to press Enter, and your browser opens. Choose your test account and click **Allow** so clasp can manage your Apps Script projects. | **You** |
+| 2 | **Google account:** setup shows which Google account MailLens will use and asks you to confirm it. To switch, answer N and sign in with your **test** account in the browser (click "Use another account" if needed), then **Allow**. MailLens uses its own clasp login, separate from any other. | **You** |
 | 3 | Create your Apps Script project and upload the MailLens code | Automatic |
 | 4 | **Install the add-on:** open the project link setup printed, then **Deploy → Test deployments → Install**, and **Done**. | **You** |
 | 5 | **Authorize it in Gmail:** reload Gmail, open any email and click the **MailLens** icon in the right-hand side panel, then **Authorize access**. Google warns "Google hasn't verified this app" (normal for your own private add-on): click **Advanced → Go to MailLens**, then **Allow**. | **You** |

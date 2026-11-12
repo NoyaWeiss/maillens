@@ -4,7 +4,8 @@ import json, os, pathlib, sys, urllib.parse, urllib.request
 
 def token() -> str:
     rc = json.load(open(os.path.expanduser("~/.clasprc.json")))
-    t = rc.get("tokens", {}).get("default", rc.get("token", {}))
+    user = os.environ.get("MAILLENS_CLASP_USER") or (open(".run/clasp-user").read().strip() if os.path.exists(".run/clasp-user") else "default")
+    t = rc.get("tokens", {}).get(user, rc.get("token", {}))
     data = urllib.parse.urlencode({"client_id": t["client_id"], "client_secret": t["client_secret"],
                                    "refresh_token": t["refresh_token"], "grant_type": "refresh_token"}).encode()
     return json.load(urllib.request.urlopen("https://oauth2.googleapis.com/token", data))["access_token"]
