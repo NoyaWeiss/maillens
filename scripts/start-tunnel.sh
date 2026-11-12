@@ -5,7 +5,9 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 mkdir -p "$ROOT/.run"
-[ -f "$ROOT/.run/tunnel.pid" ] && kill "$(cat "$ROOT/.run/tunnel.pid")" 2>/dev/null || true
+# Stop this checkout's previous tunnel only (a stale pid may now belong to another process or checkout).
+OLD="$(cat "$ROOT/.run/tunnel.pid" 2>/dev/null || true)"
+[ -n "$OLD" ] && ps -o command= -p "$OLD" 2>/dev/null | grep -q "cloudflared.*127.0.0.1:${MAILLENS_PORT:-8787}" && kill "$OLD" 2>/dev/null || true
 nohup cloudflared tunnel --no-autoupdate --url "http://127.0.0.1:${MAILLENS_PORT:-8787}" > "$ROOT/.run/tunnel.log" 2>&1 &
 echo $! > "$ROOT/.run/tunnel.pid"
 URL=""
