@@ -10,7 +10,7 @@ cd "$ROOT"
 if [ ! -f .clasp.json ]; then
   echo "== creating your Apps Script project (MailLens)"
   cp addon/appsscript.json .run/appsscript.keep.json 2>/dev/null || { mkdir -p .run; cp addon/appsscript.json .run/appsscript.keep.json; }
-  clasp create-script --type standalone --title "MailLens" --rootDir addon
+  clasp create-script --type standalone --title "${MAILLENS_PROJECT_TITLE:-MailLens}" --rootDir addon
   cp .run/appsscript.keep.json addon/appsscript.json   # clasp overwrites the manifest; restore ours
 fi
 MAILLENS_BUILD=prod "$ROOT/scripts/push-addon.sh" "$URL"

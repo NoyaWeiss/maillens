@@ -24,8 +24,9 @@ runs on your own machine; no cloud service is involved.
                                                                     ├─ detection engine (stateless)
                                    "View full dashboard" ─────────► └─ /dashboard/ (React, per-account history)
 ```
-The backend makes no outbound network calls and never stores email bodies. Gmail can only reach HTTPS,
-so your local backend is published through **your own** free Cloudflare quick tunnel.
+The backend runs **locally** in Docker, bound to 127.0.0.1, and makes no outbound network calls or stores email
+bodies. Gmail can only reach public HTTPS, so the add-on reaches it through an **external Cloudflare HTTPS tunnel**
+(`cloudflared`, a free quick tunnel that `setup.sh` starts for you; no Cloudflare account needed).
 
 ## Quick Start
 
