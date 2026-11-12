@@ -42,6 +42,8 @@ CONSEQUENCE = {
 
 
 _REQUEST_ARCHETYPE = {"bank_change": "payment_redirection", "payroll": "payment_redirection",
+                      "new_payment_channel": "payment_redirection", "crypto_or_fee": "gift_cards",
+                      "mfa_approval": "code_theft", "credential_disclosure": "code_theft", "sensitive_data": "impersonation",
                       "gift_cards": "gift_cards", "code_relay": "code_theft", "remote_access": "remote_access"}
 
 

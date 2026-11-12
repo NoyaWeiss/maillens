@@ -144,7 +144,8 @@ def s4_name_collision(ctx: Context) -> SignalResult:
 COMBO_WORDS = frozenset({"billing", "bill", "finance", "financial", "pay", "payment", "payments", "invoice", "invoices",
                          "secure", "security", "verify", "verification", "login", "signin", "account", "accounts",
                          "support", "portal", "docs", "doc", "alerts", "alert", "notify", "notification", "update",
-                         "updates", "helpdesk", "admin", "payroll", "remit", "remittance", "wire", "ap", "ar", "auth"})
+                         "updates", "helpdesk", "admin", "payroll", "remit", "remittance", "wire", "ap", "ar", "auth",
+                         "hr", "people", "staff", "it", "intranet", "sso", "escrow", "closing", "closings"})
 def s5_lookalike(ctx: Context) -> SignalResult:
     r = SignalResult()
     s = ctx.sender
@@ -181,9 +182,10 @@ def s5_lookalike(ctx: Context) -> SignalResult:
     if not best:  # combosquatting: a known name plus a separator and a risk-indicating suffix/prefix
         for ref, why in references:
             ref_label = base_label(ref)
-            if len(ref_label) < 5 or ref_label == cand or ref_label not in cand:
+            flat_ref, flat_cand = ref_label.replace("-", ""), cand.replace("-", "")
+            if len(flat_ref) < 5 or flat_ref == flat_cand or flat_ref not in flat_cand:
                 continue
-            rest = cand.replace(ref_label, " ", 1).replace("-", " ").split()
+            rest = (cand.replace(ref_label, " ", 1) if ref_label in cand else flat_cand.replace(flat_ref, " ", 1)).replace("-", " ").split()
             if rest and all(w in COMBO_WORDS for w in rest):
                 r.findings.append(Finding.of("combosquat_domain",
                     "S5", Group.IDENTITY, sender_entity(ctx), 2, Basis.MAILBOX if ref in known else Basis.OBSERVED,

@@ -47,6 +47,21 @@ def _http_links(ctx: Context):
             yield link, host, userinfo, port
 
 
+# Recognized file-sharing / e-signature services: a known contact sharing through these is normal.
+FILE_SHARE = frozenset({"box.com", "wetransfer.com", "notion.so", "figma.com", "egnyte.com"}) | frozenset(
+    d for owned in BRANDS.values() for d in owned)
+_SHARE_WORDS = re.compile(r"\b(?:shared?|uploaded|sent you|review|view|open|access)\b[^.!?\n]{0,60}\b(?:file|document|proposal|"
+                          r"contract|sow|invoice|statement|folder|pdf|deck|link)\b", re.IGNORECASE)
+
+
+def known_contact_offsite_share(ctx: Context) -> bool:
+    """Phase 5c: a KNOWN contact shares a document through an unrelated, never-seen, non-file-sharing domain
+    (typical of a compromised mailbox). Familiar senders only; unknown senders' links are not evidence."""
+    if ctx.familiarity != "0" or not _SHARE_WORDS.search(ctx.body.visible_text or ""):
+        return False
+    return any(reg not in FILE_SHARE for reg in offsite_links(ctx))
+
+
 def offsite_links(ctx: Context) -> list[str]:
     """Visible links to a domain unrelated to the sender, its signing domain, known correspondents and ESPs."""
     related = {ctx.sender.reg} | set(ctx.dkim_regs) | set(ctx.known_regs) | set(ESP_TRACKERS)

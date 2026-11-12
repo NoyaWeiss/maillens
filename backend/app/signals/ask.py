@@ -65,7 +65,45 @@ REQUEST_PATTERNS = [
       rf"supremo|rustdesk|logmein|quick ?assist|remote (?:access|support|desktop) (?:tool|app|software))\b",
       ["please install AnyDesk so I can fix your laptop"],
       ["we no longer support TeamViewer licenses"]),
+    # ---- A = 3 intents added in Phase 5c (verb + sensitive object in one sentence; all guards apply)
+    P("mfa_approval", 3, "Approve a sign-in prompt",
+      rf"\b(?:approve|accept|confirm|allow|tap yes on)\b{W}\b(?:prompt|push|notification|sign-?in request|login request|"
+      rf"authentication request|request you receive)\b|\b(?:prompt|push|sign-?in request|login request)\b{W}\b(?:approve|accept)\s+it\b|"
+      rf"\b(?:number|digits)\s+(?:shown|displayed)\s+(?:in|on)\s+your\s+"
+      rf"(?:authenticator|phone|app)\b",
+      ["You will get a login prompt on your phone - please approve it.",
+       "Please accept any sign-in request you receive today.",
+       "Reply with the number shown in your authenticator app."],
+      ["You approved a sign-in from Chrome on Mac.", "Deny any prompt you didn't trigger and tell IT."]),
+    P("credential_disclosure", 3, "Share your password",
+      rf"\b(?:send|share|reply with|email|tell|give|confirm|provide|verify)\b(?:\s+(?:me|us))?{W}\byour\s+"
+      rf"(?:password|passcode|pin|login details|credentials|username and password)\b",
+      ["IT here - please confirm your password on the portal before the upgrade.", "Reply with your username and password."],
+      ["Your password was changed successfully.", "Reset your password using the link if you forgot it."]),
+    P("sensitive_data", 3, "Send sensitive employee or tax data",
+      rf"\b(?:send|email|export|share|forward|upload)\b(?:\s+me)?{W}\b(?:w-?2s?|w-?2 forms?|ssns?|social security numbers?|"
+      rf"tax (?:forms|documents)|payroll (?:report|export|file|data)|employee (?:records|data|list|tax documents)|"
+      rf"passport (?:copies|scans?)|bank statements)\b",
+      ["Please send me the W-2 forms for all employees as PDFs today.",
+       "Can you export the full payroll report with SSNs and email it to me?"],
+      ["Your W-2 is now available in the payroll portal.", "Send me the revenue deck before 4pm."]),
+    P("crypto_or_fee", 3, "Send crypto or pay a fee to receive money",
+      rf"\b(?:send|transfer|deposit)\b(?:[^.!?\n]|\.\d){{0,60}}?\b(?:btc|bitcoin|eth|ethereum|usdt|crypto|wallet)\b|"
+      rf"\bpay\b{W}\b(?:processing|release|claim|unlock|activation)\s+fee\b|\bguaranteed\b{W}\b(?:returns?|profits?)\b",
+      ["Send 0.1 BTC to the wallet below to join.", "Pay the $25 processing fee via the link to claim it.",
+       "Invest today and receive guaranteed 20% monthly returns."],
+      ["Crypto markets fell this week.", "Customs duties may apply to international deliveries."]),
+    P("new_payment_channel", 3, "Pay through a new or unverifiable channel",
+      rf"\b(?:pay|settle|remit|send payment)\b{W}\b(?:through|via|using|on|at)\s+(?:our|the|this)\s+new\s+"
+      rf"(?:portal|payment (?:page|portal|link|system)|link|platform)\b|\bscan\b{W}\b(?:qr|code)\b{W}\b(?:pay|sign in|log in|view)\b",
+      ["Your invoice is ready. Pay it securely through our new portal.",
+       "Scan the code in the attached image to view and pay your invoice."],
+      ["You can pay through the usual portal as always.", "Scan the code at the venue entrance."]),
     # ---- A = 2: elevated
+    P("payment_portal", 2, "Pay through a link or portal",
+      rf"\b(?:pay|settle)\b{W}\b(?:via|through|using|on)\s+(?:the|our|this)\s+(?:portal|link|page)\b",
+      ["An invoice is overdue. Review and settle it via the portal to avoid fees."],
+      ["Payment was received via the portal, thank you."]),
     P("credentials", 2, "Sign in through a link",
       rf"\b(?:sign|log)\s?in\b{W}\b(?:verify|confirm|password|keep|restore|avoid|review)\b|"
       rf"\bverify\s+your\s+(?:account|password|identity|login|mailbox)\b|\benter your (?:password|credentials)\b|"
@@ -239,6 +277,8 @@ def is_reported_not_requested(text: str, start: int, end: int) -> bool:
     in_quote = any(qs <= ms and me <= qe for qs, qe in quotes)
     if in_quote and _EXAMPLE_CUE.search(sentence):
         return True
+    if re.search(r"\b(?:never|don'?t|do not|not to)\s+(?:\w+\s+){0,1}$", sentence[:ms], re.IGNORECASE):
+        return True  # negated directly before the request ("never share your password")
     if _THREAT_ACTOR.search(sentence[:ms]):
         return True
     return bool(_NEGATED_ASK.search(sentence[:ms]))

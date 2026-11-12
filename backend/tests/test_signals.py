@@ -283,3 +283,24 @@ def test_request_phrasing_and_two_sentence_bank_change():
     assert lvl("<p>We moved to a new bank. Please call your account manager to confirm before updating records.</p>") < 3
     assert lvl("<p>Please update your account details in the profile page.</p>") < 3
     assert lvl("<p>Scammers say the account is closed. They then ask you to send it to a new one.</p>") < 3
+
+
+# ------------------------------------------------------------------ Phase 5c intents: legitimate look-alikes
+def test_new_intents_ignore_legitimate_lookalikes():
+    lvl = lambda h, **k: (run(html=h, **k).request or type("n", (), {"level": 0})).level
+    assert lvl("<p>Reminder: never share your password with anyone, including IT.</p>") == 0
+    assert lvl("<p>Your W-2 is now available in the payroll portal.</p>") < 3
+    assert lvl("<p>You can pay through the usual portal as always.</p>") < 3
+    assert lvl("<p>We will never ask you to approve a sign-in prompt you didn't start. Deny it.</p>") == 0
+    assert lvl('<p>A real scam we blocked said: "Approve the login prompt we are sending you."</p>') == 0
+
+
+def test_known_partner_sharing_via_known_services_is_not_flagged():
+    known = {**REL, "sender_sent_count": 6}
+    for href in ("https://www.dropbox.com/s/abc/proposal.pdf", "https://northwind.example/files/proposal.pdf"):
+        r = run("Dana <dana@northwind.example>", relationship=known,
+                html=f'<p>I shared the proposal with you.</p><p><a href="{href}">Open</a></p>')
+        assert r.verdict == "LOW", (href, r.verdict, r.gate)
+    r = run("Dana <dana@northwind.example>", relationship=known,
+            html='<p>I shared the proposal with you.</p><p><a href="https://doc-preview-share.example/p">Open</a></p>')
+    assert (r.verdict, r.gate) == ("SUSPICIOUS", "S-L")

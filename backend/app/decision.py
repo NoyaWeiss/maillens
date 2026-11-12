@@ -71,7 +71,7 @@ def decide(findings: list[Finding], A: int, P: bool, N: str, auth_available: boo
         verdict, gate, pathway = Verdict.SUSPICIOUS, "S-D", "Deception"
     elif A == 3:
         verdict, gate, pathway = Verdict.SUSPICIOUS, "S-A", "Request in context"
-    elif credential_offsite and A >= 2:
+    elif credential_offsite and (A >= 2 or N == "0"):
         # Phase 5b: a sign-in request whose link goes to a domain unrelated to the sender, its signing
         # domain and the user's correspondents. Genuine alerts link to their own domain. Suspicious only.
         verdict, gate, pathway = Verdict.SUSPICIOUS, "S-L", "Request in context"

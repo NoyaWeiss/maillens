@@ -122,6 +122,12 @@ _REQUEST_TEXT = {
     "card_update": ("Asks for card details", "It asks you to update payment card details."),
     "enable_content": ("Asks you to enable content", "Enabling content in a document can run code."),
     "channel_move": ("Asks to move off email", "It asks you to continue on another channel."),
+    "mfa_approval": ("Asks you to approve a sign-in", "Approving a prompt you didn't start can hand over your account."),
+    "credential_disclosure": ("Asks for your password", "Legitimate services never ask you to share your password."),
+    "sensitive_data": ("Asks for sensitive data", "It asks for employee, tax or identity data."),
+    "crypto_or_fee": ("Asks for crypto or an upfront fee", "Upfront fees and crypto transfers are hard to reverse."),
+    "new_payment_channel": ("Asks you to pay a new way", "It asks you to pay through a new portal or a QR code."),
+    "payment_portal": ("Asks you to pay via a link", "It asks you to pay through a link or portal."),
     "favor_probe": ("Unexplained favor request", "It asks if you're free for a favor without saying what."),
 }
 
