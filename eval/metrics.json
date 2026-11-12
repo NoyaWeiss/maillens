@@ -1,489 +1,154 @@
 {
- "primary_evaluation": "v3",
- "note": "SYNTHETIC, balanced (100/100), self-authored data. Not real-world detection accuracy. Each holdout was written after its engine was frozen.",
- "v3": {
-  "engine_commit_frozen": "c7ffff58d833acc2d5be2326261af12f15ce650e",
-  "engine_hash": "bfab1e9020c98132",
-  "alert_policy": "SUSPICIOUS/HIGH = detected; LOW = not detected; INCONCLUSIVE reported separately",
-  "primary_inconclusive_as_not_detected": {
-   "n": 200,
-   "TP": 40,
-   "FN": 60,
-   "FP": 0,
-   "TN": 100,
-   "precision": 1.0,
-   "precision_ci95": [
-    0.912,
-    1.0
-   ],
-   "recall": 0.4,
+ "primary_evaluation": "v4",
+ "note": "SYNTHETIC, balanced (100/100), self-authored benchmark. Not a real-world accuracy estimate. Engines frozen before the dataset was written.",
+ "v4": {
+  "engine": "20f0e5e (retained)",
+  "overall": {
+   "TP": 63,
+   "FN": 37,
+   "FP": 2,
+   "TN": 98,
+   "precision": 0.969,
+   "recall": 0.63,
+   "f1": 0.764,
+   "fpr": 0.02,
+   "inconclusive": 0,
    "recall_ci95": [
-    0.309,
-    0.498
+    0.532,
+    0.718
    ],
-   "f1": 0.571,
-   "fpr": 0.0,
    "fpr_ci95": [
-    0.0,
-    0.037
+    0.006,
+    0.07
    ],
-   "accuracy": 0.7
-  },
-  "sensitivity_inconclusive_excluded": {
-   "n": 200,
-   "TP": 40,
-   "FN": 60,
-   "FP": 0,
-   "TN": 100,
-   "precision": 1.0,
    "precision_ci95": [
-    0.912,
-    1.0
-   ],
-   "recall": 0.4,
-   "recall_ci95": [
-    0.309,
-    0.498
-   ],
-   "f1": 0.571,
-   "fpr": 0.0,
-   "fpr_ci95": [
-    0.0,
-    0.037
-   ],
-   "accuracy": 0.7
-  },
-  "verdict_distribution": {
-   "Malicious": {
-    "LOW": 60,
-    "SUSPICIOUS": 30,
-    "HIGH": 10
-   },
-   "Legitimate": {
-    "LOW": 100
-   }
-  },
-  "alert_gates": {
-   "Malicious": {
-    "S-D": 15,
-    "H-B": 8,
-    "H-A": 2,
-    "S-A": 15
-   },
-   "Legitimate": {}
+    0.895,
+    0.992
+   ]
   },
   "by_category": {
-   "HR / payroll notice": {
-    "label": "Legitimate",
-    "n": 8,
-    "alerts": 0,
-    "alert_rate": 0.0,
-    "alert_rate_ci95": [
-     0.0,
-     0.324
-    ],
-    "inconclusive": 0,
-    "verdicts": {
-     "LOW": 8
-    }
-   },
-   "board-member impersonation (data request)": {
-    "label": "Malicious",
-    "n": 6,
-    "alerts": 6,
-    "alert_rate": 1.0,
-    "alert_rate_ci95": [
-     0.61,
-     1.0
-    ],
-    "inconclusive": 0,
-    "verdicts": {
-     "SUSPICIOUS": 4,
-     "HIGH": 2
-    }
-   },
-   "calendar-invite phishing": {
-    "label": "Malicious",
-    "n": 8,
-    "alerts": 0,
-    "alert_rate": 0.0,
-    "alert_rate_ci95": [
-     0.0,
-     0.324
-    ],
-    "inconclusive": 0,
-    "verdicts": {
-     "LOW": 8
-    }
-   },
-   "callback phishing (phone, no link)": {
-    "label": "Malicious",
-    "n": 8,
-    "alerts": 0,
-    "alert_rate": 0.0,
-    "alert_rate_ci95": [
-     0.0,
-     0.324
-    ],
-    "inconclusive": 0,
-    "verdicts": {
-     "LOW": 8
-    }
-   },
-   "courier notice / customs invoice": {
-    "label": "Legitimate",
-    "n": 8,
-    "alerts": 0,
-    "alert_rate": 0.0,
-    "alert_rate_ci95": [
-     0.0,
-     0.324
-    ],
-    "inconclusive": 0,
-    "verdicts": {
-     "LOW": 8
-    }
-   },
-   "executive pivot to SMS / chat": {
-    "label": "Malicious",
-    "n": 8,
-    "alerts": 8,
-    "alert_rate": 1.0,
-    "alert_rate_ci95": [
-     0.676,
-     1.0
-    ],
-    "inconclusive": 0,
-    "verdicts": {
-     "SUSPICIOUS": 5,
-     "HIGH": 3
-    }
-   },
-   "executive request (benign)": {
-    "label": "Legitimate",
-    "n": 8,
-    "alerts": 0,
-    "alert_rate": 0.0,
-    "alert_rate_ci95": [
-     0.0,
-     0.324
-    ],
-    "inconclusive": 0,
-    "verdicts": {
-     "LOW": 8
-    }
-   },
-   "external first contact (benign)": {
-    "label": "Legitimate",
-    "n": 8,
-    "alerts": 0,
-    "alert_rate": 0.0,
-    "alert_rate_ci95": [
-     0.0,
-     0.324
-    ],
-    "inconclusive": 0,
-    "verdicts": {
-     "LOW": 8
-    }
-   },
-   "fake IT agent / remote-tool install": {
-    "label": "Malicious",
-    "n": 8,
-    "alerts": 6,
-    "alert_rate": 0.75,
-    "alert_rate_ci95": [
-     0.409,
-     0.929
-    ],
-    "inconclusive": 0,
-    "verdicts": {
-     "SUSPICIOUS": 6,
-     "LOW": 2
-    }
-   },
-   "fake audit confirmation": {
-    "label": "Malicious",
-    "n": 8,
-    "alerts": 6,
-    "alert_rate": 0.75,
-    "alert_rate_ci95": [
-     0.409,
-     0.929
-    ],
-    "inconclusive": 0,
-    "verdicts": {
-     "SUSPICIOUS": 3,
-     "HIGH": 3,
-     "LOW": 2
-    }
-   },
-   "fake charity appeal": {
-    "label": "Malicious",
-    "n": 6,
-    "alerts": 4,
-    "alert_rate": 0.667,
-    "alert_rate_ci95": [
-     0.3,
-     0.903
-    ],
-    "inconclusive": 0,
-    "verdicts": {
-     "LOW": 2,
-     "SUSPICIOUS": 4
-    }
-   },
-   "fake job offer / check scam": {
-    "label": "Malicious",
-    "n": 8,
-    "alerts": 0,
-    "alert_rate": 0.0,
-    "alert_rate_ci95": [
-     0.0,
-     0.324
-    ],
-    "inconclusive": 0,
-    "verdicts": {
-     "LOW": 8
-    }
-   },
-   "fake legal / copyright notice": {
-    "label": "Malicious",
-    "n": 8,
-    "alerts": 0,
-    "alert_rate": 0.0,
-    "alert_rate_ci95": [
-     0.0,
-     0.324
-    ],
-    "inconclusive": 0,
-    "verdicts": {
-     "LOW": 8
-    }
-   },
-   "fake vendor onboarding form": {
-    "label": "Malicious",
-    "n": 8,
-    "alerts": 0,
-    "alert_rate": 0.0,
-    "alert_rate_ci95": [
-     0.0,
-     0.324
-    ],
-    "inconclusive": 0,
-    "verdicts": {
-     "LOW": 8
-    }
-   },
-   "internal IT rollout": {
-    "label": "Legitimate",
-    "n": 8,
-    "alerts": 0,
-    "alert_rate": 0.0,
-    "alert_rate_ci95": [
-     0.0,
-     0.324
-    ],
-    "inconclusive": 0,
-    "verdicts": {
-     "LOW": 8
-    }
-   },
-   "internal approval request": {
-    "label": "Legitimate",
-    "n": 10,
-    "alerts": 0,
-    "alert_rate": 0.0,
-    "alert_rate_ci95": [
-     0.0,
-     0.278
-    ],
-    "inconclusive": 0,
-    "verdicts": {
-     "LOW": 10
-    }
-   },
-   "internal charity / community": {
-    "label": "Legitimate",
-    "n": 6,
-    "alerts": 0,
-    "alert_rate": 0.0,
-    "alert_rate_ci95": [
-     0.0,
-     0.39
-    ],
-    "inconclusive": 0,
-    "verdicts": {
-     "LOW": 6
-    }
-   },
-   "internal security awareness (new topics)": {
-    "label": "Legitimate",
-    "n": 8,
-    "alerts": 0,
-    "alert_rate": 0.0,
-    "alert_rate_ci95": [
-     0.0,
-     0.324
-    ],
-    "inconclusive": 0,
-    "verdicts": {
-     "LOW": 8
-    }
-   },
-   "newsletter / conference / deals": {
-    "label": "Legitimate",
-    "n": 10,
-    "alerts": 0,
-    "alert_rate": 0.0,
-    "alert_rate_ci95": [
-     0.0,
-     0.278
-    ],
-    "inconclusive": 0,
-    "verdicts": {
-     "LOW": 10
-    }
-   },
-   "partner / vendor work email": {
-    "label": "Legitimate",
-    "n": 10,
-    "alerts": 0,
-    "alert_rate": 0.0,
-    "alert_rate_ci95": [
-     0.0,
-     0.278
-    ],
-    "inconclusive": 0,
-    "verdicts": {
-     "LOW": 10
-    }
-   },
-   "procurement system notification": {
-    "label": "Legitimate",
-    "n": 8,
-    "alerts": 0,
-    "alert_rate": 0.0,
-    "alert_rate_ci95": [
-     0.0,
-     0.324
-    ],
-    "inconclusive": 0,
-    "verdicts": {
-     "LOW": 8
-    }
-   },
-   "real auditor correspondence": {
-    "label": "Legitimate",
-    "n": 8,
-    "alerts": 0,
-    "alert_rate": 0.0,
-    "alert_rate_ci95": [
-     0.0,
-     0.324
-    ],
-    "inconclusive": 0,
-    "verdicts": {
-     "LOW": 8
-    }
-   },
-   "refund / tech-support scam": {
-    "label": "Malicious",
-    "n": 8,
-    "alerts": 4,
-    "alert_rate": 0.5,
-    "alert_rate_ci95": [
-     0.215,
-     0.785
-    ],
-    "inconclusive": 0,
-    "verdicts": {
-     "SUSPICIOUS": 4,
-     "LOW": 4
-    }
-   },
-   "tax refund scam": {
-    "label": "Malicious",
-    "n": 8,
-    "alerts": 0,
-    "alert_rate": 0.0,
-    "alert_rate_ci95": [
-     0.0,
-     0.324
-    ],
-    "inconclusive": 0,
-    "verdicts": {
-     "LOW": 8
-    }
-   },
-   "vendor thread hijack (new wording)": {
-    "label": "Malicious",
-    "n": 8,
-    "alerts": 6,
-    "alert_rate": 0.75,
-    "alert_rate_ci95": [
-     0.409,
-     0.929
-    ],
-    "inconclusive": 0,
-    "verdicts": {
-     "SUSPICIOUS": 4,
-     "LOW": 2,
-     "HIGH": 2
-    }
-   }
+   "Legitimate|HR / payroll notice (internal portal)": "0/5",
+   "Legitimate|SaaS signup (Sign in with Google, basic scopes)": "0/5",
+   "Legitimate|charity / community (internal and subscribed)": "0/5",
+   "Legitimate|colleague attachment": "0/5",
+   "Legitimate|executive request (internal, benign)": "0/5",
+   "Legitimate|internal IT notice (own domain, authenticated)": "0/5",
+   "Legitimate|internal MFA enrollment / guidance": "1/5",
+   "Legitimate|internal finance / reimbursement": "0/5",
+   "Legitimate|internal voicemail notification": "0/5",
+   "Legitimate|known partner file share": "0/5",
+   "Legitimate|known vendor banking notice (safe process)": "0/5",
+   "Legitimate|known vendor billing / statement": "0/5",
+   "Legitimate|known vendor invoice": "0/5",
+   "Legitimate|known vendor support with phone number": "0/5",
+   "Legitimate|newsletters (incl. crypto / fintech topics)": "0/5",
+   "Legitimate|real brand notification": "0/5",
+   "Legitimate|real domain registrar notice": "0/5",
+   "Legitimate|real outside counsel": "0/5",
+   "Legitimate|security awareness describing scams": "1/5",
+   "Legitimate|unsolicited first contact (benign)": "0/5",
+   "Malicious|CEO gift-card fraud": "5/5",
+   "Malicious|MFA / one-time-code theft": "4/5",
+   "Malicious|OAuth consent phishing": "5/5",
+   "Malicious|brand impersonation (look-alike domain)": "5/5",
+   "Malicious|callback phishing (phone number)": "4/5",
+   "Malicious|compromised known contact (credential link)": "5/5",
+   "Malicious|crypto wallet drainer": "0/5",
+   "Malicious|evasion (obfuscation / hidden text / shortener)": "3/5",
+   "Malicious|fake domain renewal": "1/5",
+   "Malicious|fake invoice portal / QR payment": "3/5",
+   "Malicious|fake lawyer / confidential acquisition wire": "1/5",
+   "Malicious|fake legal / compliance threat": "0/5",
+   "Malicious|malicious attachment": "3/5",
+   "Malicious|payroll diversion (colleague name, free-mail)": "5/5",
+   "Malicious|permission abuse (install / grant / enable)": "2/5",
+   "Malicious|refund / benefits lure": "4/5",
+   "Malicious|spoofed own-domain IT notice (DMARC fail)": "5/5",
+   "Malicious|thread hijack payment change": "4/5",
+   "Malicious|vendor look-alike payment redirection": "4/5",
+   "Malicious|voicemail notification lure": "0/5"
   },
   "by_difficulty": {
-   "Malicious/medium": {
-    "n": 78,
-    "alerts": 28,
-    "alert_rate": 0.359
-   },
-   "Malicious/hard": {
-    "n": 22,
-    "alerts": 12,
-    "alert_rate": 0.545
-   },
-   "Legitimate/easy": {
-    "n": 26,
-    "alerts": 0,
-    "alert_rate": 0.0
-   },
-   "Legitimate/medium": {
-    "n": 50,
-    "alerts": 0,
-    "alert_rate": 0.0
-   },
-   "Legitimate/hard": {
-    "n": 24,
-    "alerts": 0,
-    "alert_rate": 0.0
-   }
+   "Legitimate|easy": "0/30",
+   "Legitimate|hard": "2/25",
+   "Legitimate|medium": "0/45",
+   "Malicious|easy": "17/25",
+   "Malicious|hard": "19/27",
+   "Malicious|medium": "27/48"
   },
-  "inconclusive_total": 0
+  "by_origin": {
+   "Legitimate|novel": "0/10",
+   "Legitimate|v1": "1/35",
+   "Legitimate|v2": "1/30",
+   "Legitimate|v3": "0/25",
+   "Malicious|novel": "3/15",
+   "Malicious|v1": "44/50",
+   "Malicious|v2": "8/20",
+   "Malicious|v3": "8/15"
+  }
  },
- "v3_engine_comparison": {
-  "v2_engine_97f93f8": {
-   "TP": 37,
-   "FN": 63,
-   "FP": 0,
-   "TN": 100,
-   "recall": 0.37,
-   "precision": 1.0,
-   "fpr": 0.0
+ "v4_engine_comparison": {
+  "baseline_c7ffff5": {
+   "TP": 51,
+   "FN": 49,
+   "FP": 2,
+   "TN": 98,
+   "precision": 0.962,
+   "recall": 0.51,
+   "f1": 0.667,
+   "fpr": 0.02,
+   "inconclusive": 0,
+   "recall_ci95": [
+    0.413,
+    0.606
+   ],
+   "fpr_ci95": [
+    0.006,
+    0.07
+   ],
+   "precision_ci95": [
+    0.872,
+    0.99
+   ]
   },
-  "v3_engine_c7ffff5": {
-   "TP": 40,
-   "FN": 60,
-   "FP": 0,
-   "TN": 100,
-   "precision": 1.0,
-   "recall": 0.4,
-   "f1": 0.571,
-   "fpr": 0.0
+  "candidate_20f0e5e": {
+   "TP": 63,
+   "FN": 37,
+   "FP": 2,
+   "TN": 98,
+   "precision": 0.969,
+   "recall": 0.63,
+   "f1": 0.764,
+   "fpr": 0.02,
+   "inconclusive": 0,
+   "recall_ci95": [
+    0.532,
+    0.718
+   ],
+   "fpr_ci95": [
+    0.006,
+    0.07
+   ],
+   "precision_ci95": [
+    0.895,
+    0.992
+   ]
   }
  },
  "history": {
+  "v3": {
+   "label": "HISTORICAL: engine c7ffff5 on v3 holdout (v3 later used as development data)",
+   "metrics": {
+    "TP": 40,
+    "FN": 60,
+    "FP": 0,
+    "TN": 100,
+    "precision": 1.0,
+    "recall": 0.4,
+    "f1": 0.571,
+    "fpr": 0.0
+   }
+  },
   "v2": {
    "label": "HISTORICAL: engine 97f93f8 on v2 holdout (v2 later used as development data)",
    "metrics": {
