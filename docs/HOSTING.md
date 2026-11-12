@@ -1,3 +1,7 @@
+> **Status (2026-11-12): cloud hosting was cancelled by the owner.** The supported setup is local: Docker
+> plus each reviewer's own HTTPS tunnel (see README). Cloud Run notes and `scripts/cloudrun-deploy.sh`
+> remain only as an optional reference and are **not required**.
+
 # Stable hosting: Cloud Run vs. a fixed Cloudflare Tunnel
 
 Nothing in this document has been created or enabled. Any option that needs billing or a paid

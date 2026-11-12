@@ -13,5 +13,12 @@ for _ in $(seq 1 30); do
   [ -n "$URL" ] && break; sleep 1
 done
 [ -n "$URL" ] || { echo "tunnel did not start; see .run/tunnel.log"; exit 1; }
-echo "$URL" | tee "$ROOT/.run/url"
+echo "$URL" > "$ROOT/.run/url"
+printf "waiting for the public URL to resolve (new quick-tunnel hostnames can take 1-2 minutes)"
+for _ in $(seq 1 36); do
+  [ "$(curl -s -o /dev/null -w '%{http_code}' -m 5 "$URL/healthz")" = "200" ] && break; printf "."; sleep 5
+done
+echo
+[ "$(curl -s -o /dev/null -w '%{http_code}' -m 10 "$URL/healthz")" = "200" ] || { echo "tunnel not reachable yet: $URL (check .run/tunnel.log)"; exit 1; }
+echo "$URL"
 echo "Note: quick-tunnel URLs change on every restart; re-run scripts/setup-addon.sh afterwards."
