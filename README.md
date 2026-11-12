@@ -125,6 +125,7 @@ Details: [docs/SECURITY_QA_REPORT.md](docs/SECURITY_QA_REPORT.md) · [docs/TESTI
 | "Analysis service unavailable" in Gmail | The tunnel stopped or changed: re-run `./scripts/setup.sh` |
 | No MailLens icon in Gmail | Install the test deployment (Google Setup, step 3), then reload Gmail |
 | Dashboard says the link expired | Links work once and sessions last 8 hours: open it again from Gmail |
+| "Refusing: … belongs to another MailLens checkout" | Another copy or app uses that name or port: run with `MAILLENS_CONTAINER=… MAILLENS_PORT=… MAILLENS_VOLUME=…` |
 | Backend logs | `docker logs maillens` |
 
 Want a different HTTPS endpoint? Run `MAILLENS_TUNNEL_URL=https://your-host ./scripts/setup.sh`. Backend only,
