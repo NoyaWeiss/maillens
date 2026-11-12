@@ -87,7 +87,7 @@ fi
 
 printf "\n${G}${B}Automated setup complete.${N} Two manual steps remain (Google requires them):\n"
 printf "  1. Open https://script.google.com/home/projects/%s/edit\n" "$SID"
-printf "     -> Deploy -> Test deployments -> Application(s): Gmail -> Install\n"
+printf "     -> Deploy -> Test deployments -> Install -> Done\n"
 printf "  2. In Gmail (reload it), open any email and click the MailLens icon in the right-hand panel\n"
 printf "     -> Authorize access -> 'Google hasn't verified this app' -> Advanced -> Go to MailLens -> Allow\n"
 printf "\nSuccess looks like: the MailLens Home screen says 'Analysis service ready', and an opened email shows a verdict.\n"

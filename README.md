@@ -1,132 +1,150 @@
 # MailLens
 
-## What is MailLens?
-
 MailLens is a Gmail add-on that tells you whether the email you just opened is safe. It shows a verdict
-(**Low risk, Suspicious, High risk or Inconclusive**), the evidence behind it, and what to do next. Analysis
-runs on your own machine; no cloud service is involved.
+(**Low risk, Suspicious, High risk or Inconclusive**), the evidence behind it, and what to do next. A
+dashboard (the Security Console) shows your analyzed emails, benchmark results, and how detection works.
 
-## What it does
-
-- **In Gmail:** a risk card for the open email (verdict, risk index, reasons, recommended action) and a
-  detailed analysis on demand.
-- **Security Console (dashboard):** your analyzed emails over a 1-hour to 1-year window, search, per-email
-  assessments, an optional **Scan Inbox**, benchmark results, and how detection works.
-- **Detection approach:** 13 explainable checks.
-  - **Is the email lying?** Look-alike domains, a changed Reply-To, links that hide their destination, hidden text.
-  - **Is it asking for something risky in a suspicious context?** Bank-detail changes, gift cards, passwords or codes.
-  - **How the verdict is reached:** findings are correlated per sender, domain or link and never double-counted. High risk needs strong or corroborated evidence. Missing information never raises the risk.
-
-## Architecture
+**How it decides:** 13 explainable checks look for emails that **contradict themselves** (look-alike domains,
+a changed Reply-To, links hiding their destination, hidden text) or **ask for something risky in a suspicious
+context** (bank-detail changes, gift cards, passwords or codes). Findings are correlated so nothing is counted
+twice; High risk always needs strong or corroborated evidence; missing information never raises the risk.
 
 ```
- Gmail ── MailLens add-on (Apps Script) ──HTTPS──► your tunnel ──► backend (Docker, 127.0.0.1:8787)
-                                                                    ├─ detection engine (stateless)
-                                   "View full dashboard" ─────────► └─ /dashboard/ (React, per-account history)
+ Gmail ── MailLens add-on ──HTTPS──► Cloudflare tunnel ──► MailLens backend on YOUR computer (Docker)
+                                                            ├─ detection engine (stateless, no outbound calls)
+                     "View full dashboard" ───────────────► └─ dashboard (per-account history, never email bodies)
 ```
-The backend runs **locally** in Docker, bound to 127.0.0.1, and makes no outbound network calls or stores email
-bodies. Gmail can only reach public HTTPS, so the add-on reaches it through an **external Cloudflare HTTPS tunnel**
-(`cloudflared`, a free quick tunnel that `setup.sh` starts for you; no Cloudflare account needed).
+The backend runs locally. Gmail can only reach public HTTPS addresses, so setup connects it through a free,
+temporary Cloudflare tunnel (no Cloudflare account needed).
 
-## Quick Start
+---
 
-**You need:** [Docker Desktop](https://www.docker.com/products/docker-desktop/) (running),
-[Node.js 18+](https://nodejs.org/), Python 3.9+, [cloudflared](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/)
-(macOS: `brew install cloudflared`), and a Google account for testing (a dedicated test account is recommended).
+## Install (macOS)
+
+About 15 minutes. Tested on macOS. Linux should work the same way, and on Windows you'd use WSL2 (Ubuntu) with Docker Desktop, but neither has been tested.
+
+### Step 1: Before you start
+
+**Install these yourself** (setup can't install them):
+
+| Tool | How to install | Check it works |
+|---|---|---|
+| **Docker Desktop** | Download from <https://www.docker.com/products/docker-desktop/>, install it, open it once, and wait until it says it is running | `docker info` shows no error |
+| **Apple Command Line Tools** (provides `git`, `python3`, `curl`) | In Terminal: `xcode-select --install`, then click **Install** | `git --version` and `python3 --version` print versions |
+| **A Google account for testing** | A separate test account is recommended | — |
+
+**Don't install these:** setup downloads them for you, after asking, into the project's own `.tools/` folder.
+They are official builds with verified checksums, and setup needs no administrator password, Homebrew or
+`sudo`. If you already have them, setup uses yours.
+- Node.js and clasp (Google's Apps Script command-line tool)
+- cloudflared (the tunnel)
+
+### Step 2: Download MailLens
+
+Copy and paste into Terminal. This puts MailLens in your home folder (`~/maillens`) and updates it if it's
+already there:
+```bash
+cd ~ && (git clone https://github.com/NoyaWeiss/maillens.git || git -C maillens pull --ff-only)
+```
+
+### Step 3: Run setup
 
 ```bash
-npm install -g @google/clasp
-git clone https://github.com/NoyaWeiss/maillens.git && cd maillens
-./scripts/setup.sh                 # add --with-demo to also create the synthetic demo mailbox
+~/maillens/scripts/setup.sh
+```
+This works from any folder and is safe to run again. Add `--with-demo` to also create 13 synthetic demo emails.
+
+**It does automatically:**
+1. checks Docker and the Command Line Tools, and offers to download Node.js, clasp and cloudflared if they are missing
+2. creates a private random API key (`backend/.env`, never displayed)
+3. builds and starts the backend and dashboard in Docker
+4. starts your HTTPS tunnel
+5. creates **your own** Apps Script project and uploads the add-on
+
+**It pauses for you** at the Google login (Step 4). When it finishes, you'll see:
+```
+Automated setup complete. Two manual steps remain (Google requires them):
+  1. Open https://script.google.com/home/projects/<your project>/edit
 ```
 
-**`setup.sh` does automatically:**
-- checks prerequisites
-- creates a random API key in `backend/.env` (never printed)
-- builds and starts the backend and dashboard in Docker
-- starts your HTTPS tunnel
-- creates **your own** Apps Script project and uploads the add-on, locked to your tunnel
+### Step 4: Connect Google
 
-It is safe to re-run, for example after a tunnel restart. It ends with **"Automated setup complete"** and a link
-to your project.
+| # | What | Who |
+|---|---|---|
+| 1 | Open <https://script.google.com/home/usersettings> and turn **Google Apps Script API** to **On**. Do this before Step 3; if you forget, setup stops and tells you, so turn it on and re-run Step 3. | **You** |
+| 2 | **Google login:** setup asks you to press Enter, and your browser opens. Choose your test account and click **Allow** so clasp can manage your Apps Script projects. | **You** |
+| 3 | Create your Apps Script project and upload the MailLens code | Automatic |
+| 4 | **Install the add-on:** open the project link setup printed, then **Deploy → Test deployments → Install**, and **Done**. | **You** |
+| 5 | **Authorize it in Gmail:** reload Gmail, open any email and click the **MailLens** icon in the right-hand side panel, then **Authorize access**. Google warns "Google hasn't verified this app" (normal for your own private add-on): click **Advanced → Go to MailLens**, then **Allow**. | **You** |
 
-## Google Setup (manual, about 3 minutes)
+**Permissions MailLens asks for:**
+- run inside Gmail and read **only the email you open**
+- connect to your own backend
+- save its settings
+- read mailbox metadata (`gmail.readonly`), used only to recognize people you've emailed and for Scan Inbox
 
-Google requires these steps from you; `setup.sh` pauses or prints a link for each:
+You may untick `gmail.readonly`. MailLens still works without it; only those two features turn off.
 
-1. **Allow Apps Script access:** turn **Google Apps Script API** to **On** at
-   <https://script.google.com/home/usersettings>. If you skip this, `setup.sh` stops and tells you to turn it on.
-2. **Log in:** when `setup.sh` asks, a browser opens for `clasp login`. Choose your test account.
-3. **Install the add-on:** open the project link `setup.sh` printed, then
-   **Deploy → Test deployments → Application(s): Gmail → Install**.
-4. **Authorize:** in Gmail, reload the page, open any email and click the **MailLens** icon in the right-hand panel,
-   then **Authorize access**. Google shows "Google hasn't verified this app" (expected for your own unpublished
-   project): click **Advanced → Go to MailLens → Allow**.
+### Step 5: Test MailLens
 
-Permissions requested (`addon/appsscript.json`): run in Gmail and read the **open** email; call your backend;
-store settings; and `gmail.readonly` for relationship checks and Scan Inbox. You can decline `gmail.readonly`;
-MailLens still works, but those two features are unavailable.
+- [ ] With no email open, the MailLens panel says **"Analysis service ready"**.
+- [ ] Open any email: a **verdict card** appears (Low risk / Suspicious / High risk / Inconclusive).
+- [ ] **View detailed analysis** shows every check and its result.
+- [ ] **View full dashboard** opens the Security Console in a new tab, showing the email you analyzed.
+- [ ] Optional, with `--with-demo`: open the seeder link setup printed, choose `seedDemoMailbox` and click **Run** once.
+  Then the newest "Re: PO 4471 - office supplies" shows **High risk**, "Updated remittance details" shows
+  **Suspicious**, and "Invoice #1043 from Brightline Studio" shows **Low risk**.
 
-> **Not verified on a brand-new account:** these Google steps were tested on the author's own test account,
-> not on a fresh reviewer account. If a screen differs, follow Google's prompt.
+All checked? MailLens is installed.
 
-## Try MailLens
+> **Not yet verified on a brand-new Google account:** the Google steps were tested on the author's test
+> account. If a Google screen looks different, follow Google's prompt.
 
-- **Check it's running:** with no email open, the MailLens panel shows **"Analysis service ready"**.
-- **Analyze an email:** open any email; its verdict appears in the panel. With `--with-demo` (open the seeder link
-  it prints, choose `seedDemoMailbox`, click **Run** once), you get 13 synthetic emails. For example, the newest
-  "Re: PO 4471 - office supplies" is **High risk**, "Updated remittance details" is **Suspicious**, and
-  "Invoice #1043 from Brightline Studio" is **Low risk**.
-- **View detailed analysis:** shows every check and its result.
-- **View full dashboard:** opens the Security Console in a new tab. Use the slider to choose a time window,
-  search, and click an email for its assessment. **Scan inbox** analyzes up to 50 recent inbox emails; Google
-  may ask you to approve once.
+---
 
 ## Evaluation
 
 Frozen engine, pre-registered synthetic benchmark of 200 emails (100 malicious, 100 legitimate):
-
-| Precision | Recall | F1 | False-positive rate |
-|---|---|---|---|
-| 96.9% | 63% | 0.76 | 2% |
-
-The data is synthetic and the categories are small, so real-world performance may differ. Details:
-[docs/EVALUATION_REPORT.md](docs/EVALUATION_REPORT.md). Reproduce and run the tests:
+**precision 96.9%, recall 63%, F1 0.76, false-positive rate 2%.** The data is synthetic and the categories
+are small, so real-world performance may differ. See [docs/EVALUATION_REPORT.md](docs/EVALUATION_REPORT.md).
+To reproduce it and run the tests (requires [uv](https://docs.astral.sh/uv/)):
 ```bash
-cd backend && uv sync && uv run pytest -q && uv run python ../eval/reproduce.py   # needs uv: https://docs.astral.sh/uv/
-cd .. && node --test addon/tests/ dashboard/tests/
+cd ~/maillens/backend && uv sync && uv run pytest -q && uv run python ../eval/reproduce.py
+cd ~/maillens && .tools/bin/node --test addon/tests/ dashboard/tests/     # or: node --test …
 ```
 
-## Security & Limitations
+## Security & limitations
 
 - **Security:**
-  - An API key protects every backend call, and the add-on can only reach your backend host.
+  - An API key protects every backend call, and the add-on can only reach your own backend.
   - Every value is escaped, and there is no LLM to prompt-inject.
-  - Dashboard links are one-time codes with no credentials in the URL, and accounts are isolated from each other.
-- **Privacy:** MailLens analyzes the opened email and, when you allow it, uses read access to your mailbox only
-  for the recipients of mail you've sent and earlier headers in the open thread. The dashboard keeps subject,
-  sender and verdict (never the body) for up to 1 year; **Clear history** removes it.
+  - Dashboard links are one-time codes with no credentials in the URL, and accounts are isolated.
+- **Privacy:** MailLens analyzes the opened email and, when you allow it, uses read access to your mailbox only for
+  the recipients of mail you've sent and earlier headers in the open thread. The dashboard keeps subject, sender and
+  verdict (never the body) for up to 1 year; **Clear history** removes it.
 - **Limitations:**
   - Low risk is not a guarantee.
   - Attachment contents, text in images and domain reputation are not analyzed.
   - Request detection is English only.
-  - Quick-tunnel URLs change on restart.
+  - Tunnel addresses change when the tunnel restarts; re-run setup.
 
-Details: [docs/SECURITY_QA_REPORT.md](docs/SECURITY_QA_REPORT.md) · [docs/TESTING_PLAN.md](docs/TESTING_PLAN.md) ·
-[docs/RELIABILITY.md](docs/RELIABILITY.md).
+More: [docs/SECURITY_QA_REPORT.md](docs/SECURITY_QA_REPORT.md) · [docs/TESTING_PLAN.md](docs/TESTING_PLAN.md) ·
+[docs/RELIABILITY.md](docs/RELIABILITY.md)
 
 ## Troubleshooting
 
-| Problem | Fix |
+| You see | Do this |
 |---|---|
-| `setup.sh` lists missing prerequisites | Install them from the links shown, then re-run `./scripts/setup.sh` |
-| "Docker is installed but not running" | Start Docker Desktop, then re-run |
-| Asked to turn on the Apps Script API | Turn it on at script.google.com/home/usersettings, wait about a minute, then re-run |
-| "Analysis service unavailable" in Gmail | The tunnel stopped or changed: re-run `./scripts/setup.sh` |
-| No MailLens icon in Gmail | Install the test deployment (Google Setup, step 3), then reload Gmail |
-| Dashboard says the link expired | Links work once and sessions last 8 hours: open it again from Gmail |
-| "Refusing: … belongs to another MailLens checkout" | Another copy or app uses that name or port: run with `MAILLENS_CONTAINER=… MAILLENS_PORT=… MAILLENS_VOLUME=…` |
+| `npm: command not found` or `brew: command not found` | Nothing to install by hand: setup downloads Node.js, clasp and cloudflared itself (Step 3) |
+| `npm ERR! EACCES` | Don't install clasp globally or with sudo; setup installs it in `~/maillens/.tools` |
+| `destination path 'maillens' already exists` | Use the Step 2 command; it updates your existing copy instead |
+| `no such file or directory: ./scripts/setup.sh` | Run it by its full path: `~/maillens/scripts/setup.sh` |
+| "Docker is installed but not running" | Open Docker Desktop, wait until it's running, then re-run setup |
+| Setup says to turn on the Apps Script API | Step 4.1, wait about a minute, then re-run setup |
+| "Analysis service unavailable" in Gmail | The tunnel stopped (for example after a restart): re-run `~/maillens/scripts/setup.sh` |
+| No MailLens icon in Gmail | Step 4.4 (install the test deployment), then reload Gmail |
+| "Refusing: … belongs to another MailLens checkout" | Another copy uses that port or name: re-run with `MAILLENS_PORT=8788 MAILLENS_CONTAINER=maillens2 MAILLENS_VOLUME=maillens2-data` before the command |
 | Backend logs | `docker logs maillens` |
 
-Want a different HTTPS endpoint? Run `MAILLENS_TUNNEL_URL=https://your-host ./scripts/setup.sh`. Backend only,
-with no Google steps: `./scripts/setup.sh --backend-only`.
+Advanced: use your own HTTPS endpoint with `MAILLENS_TUNNEL_URL=https://… ~/maillens/scripts/setup.sh`, or start
+only the backend with `~/maillens/scripts/setup.sh --backend-only`.
