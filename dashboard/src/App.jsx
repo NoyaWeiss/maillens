@@ -113,7 +113,7 @@ export default function App() {
             onClear={onClear} onDemo={() => setDemoMode(true)} onRefresh={() => loadAccount({ fromLaunch: false })} />
         ) : null}
         {route.page === 'performance' ? <Performance /> : null}
-        {route.page === 'how' ? <HowItWorks source={source.mode === 'none' ? null : source} selected={route.id || source.context} /> : null}
+        {route.page === 'how' ? <HowItWorks /> : null}
       </main>
     </div>
   );

@@ -1,39 +1,49 @@
-import { useEffect, useState } from 'react';
-import { BASIS, Disclosure, Panel, SectionHeader, VerdictBadge, splitSender } from './ui.jsx';
+import { useState } from 'react';
+import { Disclosure, Panel, SectionHeader, VerdictBadge } from './ui.jsx';
 
-// Mirrors backend/app/engine.py (CHECK_NAMES) and backend/app/decision.py.
+// Written from the implementation: backend/app/engine.py (checks S1-S14), signals/*, decision.py, presentation.py.
 const STAGES = [
-  { key: 'examine', title: 'Examine', checks: [],
-    text: 'MailLens reads the opened email: sender details, Google’s authentication result, the text, links and attachment names. With your permission it also notes who you’ve emailed recently.' },
-  { key: 'identity', title: 'Identity', checks: ['S1', 'S2', 'S3', 'S4', 'S5'],
-    text: 'It checks whether the sender is who they claim to be: authentication, look-alike domains, misleading display names, and reply addresses that go somewhere else.' },
-  { key: 'relationship', title: 'Relationship', checks: ['S6', 'S7'],
-    text: 'It compares the sender with people you already correspond with and with earlier messages in the thread. Missing history never raises the risk.' },
-  { key: 'content', title: 'Content', checks: ['S9', 'S10', 'S11', 'S12'],
-    text: 'It looks for links that hide their real destination, risky attachment types, and hidden text aimed at security scanners.' },
-  { key: 'request', title: 'Request', checks: ['S13', 'S14'],
-    text: 'It recognizes requests for sensitive actions, such as payments, passwords or codes, and pressure or secrecy. Quoted or ruled-out requests don’t count.' },
-  { key: 'decide', title: 'Decision', checks: [],
-    text: 'Each thing examined counts once, at its strongest finding, and findings are never added up. Fixed rules then choose Low, Suspicious, High or Inconclusive.' },
-  { key: 'explain', title: 'Explanation', checks: [],
-    text: 'The result becomes a one-line summary, up to three plain-English reasons, and practical next steps.' },
+  { key: 'examine', title: 'Examine', text: [
+    'When you open an email, the Gmail add-on collects its headers (sender, reply address, Google’s authentication result), subject, text, links and attachment names and types. Attachments themselves are never opened.',
+    'With your permission, it also summarizes who you have emailed in the last 180 days and the earlier messages in the thread.',
+    'Everything is sent only to your own MailLens backend. If a piece of information is missing, the related checks are marked unavailable instead of guessed.',
+  ] },
+  { key: 'identity', title: 'Identity', text: [
+    'MailLens reads Google’s SPF, DKIM and DMARC result to see whether the sending domain is authentic.',
+    'It looks for look-alike domains (for example a digit swapped for a letter), display names that claim a different company or address, reply addresses that send your answer somewhere else, and names that match a contact but come from a new address.',
+    'Impersonation is behind most payment and credential fraud, so a deliberate look-alike domain is strong enough on its own for High risk.',
+  ] },
+  { key: 'relationship', title: 'Relationship', text: [
+    'MailLens compares the sender with people and domains you have emailed recently, and checks whether the thread’s earlier messages came from the same sender with the same reply address.',
+    'A first-time sender is one of the corroborating signs that can lift a risky request to High risk, and a known contact sharing a file through an unrelated site is treated as suspicious.',
+    'Without mailbox access the sender is treated as unknown, never as unfamiliar, so missing history can’t make an email look riskier.',
+  ] },
+  { key: 'content', title: 'Content', text: [
+    'MailLens checks whether link text and link destinations disagree, whether URLs are built to deceive (such as hidden real domains or shorteners), whether attachment types are risky, and whether hidden text targets security scanners.',
+    'These are concrete, observable tricks, so they count as evidence rather than suspicion.',
+    'Newsletters and other bulk mail can only soften weak findings here; they never hide authentication failures.',
+  ] },
+  { key: 'request', title: 'Request', text: [
+    'MailLens recognizes requests for sensitive actions: changing payment details, wiring money, buying gift cards, entering a password or code, approving a sign-in, sharing data, installing software or calling a number.',
+    'It also notes pressure and secrecy wording. Requests that are quoted, described or ruled out (as in a security warning) do not count.',
+    'A request alone is not proof of an attack, but combined with an unfamiliar sender or another warning sign it becomes a strong signal.',
+  ] },
+  { key: 'decide', title: 'Decision', text: [
+    'Each thing examined (the sender, a domain, a link) counts once, at its strongest finding, and findings are never added up. That stops one problem from being counted several times.',
+    'Fixed, ordered rules then choose the verdict. High needs strong deception, or a risky request backed by independent evidence. Suspicious covers a single strong warning sign, a high-impact request such as new bank details, or a sensitive request in a suspicious context. Inconclusive is used when authentication data is missing for an otherwise risky email. Everything else is Low.',
+    'The risk index (0–100) shows where an email sits within its verdict; it is not a probability.',
+  ], verdicts: true },
+  { key: 'explain', title: 'Explanation', text: [
+    'The decision becomes a one-sentence summary, a short list of reasons in plain English, and practical next steps.',
+    'Each reason is labelled as seen in the email, taken from your email history, or based on the wording, so facts are kept apart from inferences.',
+    'Any limitation that affects this particular email, such as an unopened attachment or missing mailbox access, is shown with the result.',
+  ] },
 ];
 
-export default function HowItWorks({ source, selected }) {
+export default function HowItWorks() {
   const [stage, setStage] = useState('identity');
-  const emails = source ? source.emails : [];
-  const [id, setId] = useState(selected || '');
-  const [detail, setDetail] = useState(null);
-  useEffect(() => { if (selected) setId(selected); }, [selected]);
-  useEffect(() => {
-    if (!id || !source) { setDetail(null); return undefined; }
-    let live = true;
-    source.loadDetail(id).then((d) => live && setDetail(d)).catch(() => live && setDetail(null));
-    return () => { live = false; };
-  }, [id, source]);
-
-  const s = STAGES.find((x) => x.key === stage);
-  const i = STAGES.indexOf(s);
+  const i = STAGES.findIndex((x) => x.key === stage);
+  const s = STAGES[i];
   return (
     <>
       <SectionHeader title="How MailLens Works" subtitle="How MailLens examines email signals and turns evidence into a security decision." />
@@ -47,21 +57,13 @@ export default function HowItWorks({ source, selected }) {
             </li>
           ))}
         </ol>
-
         <div className="stage-panel" aria-live="polite">
-          <div className="stage-head">
-            <h2>{i + 1}. {s.title}</h2>
-            {emails.length ? (
-              <select className="input select" value={id} onChange={(e) => setId(e.target.value)} aria-label="Show this step for an analyzed email">
-                <option value="">General explanation</option>
-                {emails.map((e) => <option key={e.id} value={e.id}>{e.subject.slice(0, 56)}</option>)}
-              </select>
-            ) : null}
-          </div>
-          <p className="stage-text">{s.text}</p>
-          {detail ? <Observation stage={s} d={detail} /> : null}
-          {detail && (s.checks.length || s.key === 'decide') ? (
-            <Disclosure title="Technical details"><Technical stage={s} r={detail.result} /></Disclosure>
+          <h2>{i + 1}. {s.title}</h2>
+          {s.text.map((t, n) => <p key={n} className="stage-text">{t}</p>)}
+          {s.verdicts ? (
+            <div className="verdict-row" aria-hidden="true">
+              <VerdictBadge verdict="HIGH" /><VerdictBadge verdict="SUSPICIOUS" /><VerdictBadge verdict="INCONCLUSIVE" /><VerdictBadge verdict="LOW" />
+            </div>
           ) : null}
         </div>
       </Panel>
@@ -72,7 +74,7 @@ export default function HowItWorks({ source, selected }) {
             <div>
               <p className="reason-title">Safeguards</p>
               <ul className="plain">
-                <li>Newsletters can only soften weak findings, never authentication failures.</li>
+                <li>Bulk mail can only soften weak findings, never authentication failures.</li>
                 <li>Quoted, described or ruled-out requests are not treated as requests.</li>
                 <li>Missing information is marked unavailable; it never raises the risk.</li>
               </ul>
@@ -82,7 +84,7 @@ export default function HowItWorks({ source, selected }) {
               <ul className="plain">
                 <li>Emails go only to your own MailLens backend, which makes no outside calls.</li>
                 <li>History keeps subject, sender and result for up to a year, never the body; you can clear it anytime.</li>
-                <li>Dashboard links work once and contain no credentials. No new Gmail permissions.</li>
+                <li>Dashboard links work once and contain no credentials. No extra Gmail permissions.</li>
               </ul>
             </div>
             <div>
@@ -97,36 +99,5 @@ export default function HowItWorks({ source, selected }) {
         </Disclosure>
       </Panel>
     </>
-  );
-}
-
-/** One genuine observation from the selected email for the current stage. */
-function Observation({ stage, d }) {
-  const r = d.result;
-  let body;
-  if (stage.key === 'examine') {
-    body = <>Examined “{d.subject}” from {splitSender(d.sender).name}.</>;
-  } else if (stage.key === 'decide') {
-    body = <><VerdictBadge verdict={r.verdict} /> {r.decision_explanation}</>;
-  } else if (stage.key === 'explain') {
-    body = <>“{r.headline}”{r.actions[0] ? <> Next step: {r.actions[0].title}.</> : null}</>;
-  } else {
-    const f = r.findings.find((x) => stage.checks.includes(x.signal));
-    body = f ? <><b>{f.title}.</b> {f.summary} <span className="basis">{BASIS[f.basis]}</span></> : 'No warning signs at this step.';
-  }
-  return <p className="observation"><span className="obs-label">This email</span>{body}</p>;
-}
-
-function Technical({ stage, r }) {
-  if (stage.key === 'decide') {
-    return <dl className="kv"><div><dt>Rule</dt><dd>{r.gate_explanation}</dd></div><div><dt>Evidence vector</dt><dd className="mono">{r.vector}</dd></div></dl>;
-  }
-  const checks = r.checks.filter((c) => stage.checks.includes(c.id));
-  const found = [...r.findings, ...r.also_observed].filter((f) => stage.checks.includes(f.signal));
-  return (
-    <dl className="kv">
-      {checks.map((c) => <div key={c.id}><dt>{c.label || c.name}</dt><dd>{c.state === 'ran' ? 'Ran' : c.state === 'unavailable' ? 'Unavailable' : 'Not applicable'}{c.note ? ` (${c.note})` : ''}</dd></div>)}
-      {found.map((f, n) => <div key={n}><dt>{f.signal}</dt><dd>{f.title}, strength {f.level}/3</dd></div>)}
-    </dl>
   );
 }

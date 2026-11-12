@@ -1,8 +1,8 @@
 /**
  * Inbox scan (Security Console "Scan inbox").
  *
- * Runs as an Apps Script web app on this same project, as the signed-in user, deployed only as the
- * owner-only test (/dev) URL. It uses the already-granted gmail.readonly scope through the advanced
+ * Runs as an Apps Script web app on this same project, as the signed-in user, from an owner-only
+ * deployment (/exec, maintained by scripts/push-addon.sh). It uses the already-granted gmail.readonly scope through the advanced
  * Gmail service: no new OAuth scopes, and the backend never receives Gmail credentials.
  *
  * Binding: the dashboard gets a short-lived scan ticket for its session's account. Every backend call

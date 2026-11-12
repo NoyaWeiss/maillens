@@ -16,7 +16,6 @@ export default function ActivityChart({ emails, cutoff, now, label }) {
     return { buckets: b, max: Math.max(1, ...b.map((x) => x.total)) };
   }, [emails, cutoff, now]);
   const total = buckets.reduce((s, b) => s + b.total, 0);
-  const tick = Math.ceil(buckets.length / 6);
   return (
     <div className="chart">
       <div className="chart-legend" aria-hidden="true">
@@ -44,7 +43,9 @@ export default function ActivityChart({ emails, cutoff, now, label }) {
         </div>
       </div>
       <div className="chart-axis" aria-hidden="true">
-        {buckets.map((b, i) => <span key={i}>{i % tick === 0 ? bucketLabel(b.start, b.size) : ''}</span>)}
+        <span>{bucketLabel(cutoff, buckets[0].size)}</span>
+        <span>{bucketLabel((cutoff + now) / 2, buckets[0].size)}</span>
+        <span>{buckets[0].size < 86400 ? 'Now' : 'Today'}</span>
       </div>
     </div>
   );

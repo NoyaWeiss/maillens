@@ -1,15 +1,20 @@
 // Time ranges refer ONLY to when an email was received in Gmail (received_at, UTC epoch seconds).
 // Analysis/scan times are never used here. Emails with an unknown received time are excluded.
 
-/** Slider stops: dense for short ranges, sparse for long ones (a log-like scale from 1 hour to 1 year). */
+/**
+ * Slider stops: five equal segments of three stops, so the markers 1h, 1d, 1w, 1mo, 3mo and 1y sit at even
+ * intervals and line up with the thumb. Dense for short ranges, sparse for long ones (log-like scale).
+ */
 export const STOPS = [
-  { n: 1, unit: 'hour' }, { n: 2, unit: 'hour' }, { n: 3, unit: 'hour' }, { n: 6, unit: 'hour' }, { n: 12, unit: 'hour' },
-  { n: 1, unit: 'day' }, { n: 2, unit: 'day' }, { n: 3, unit: 'day' }, { n: 5, unit: 'day' },
+  { n: 1, unit: 'hour' }, { n: 2, unit: 'hour' }, { n: 6, unit: 'hour' },
+  { n: 1, unit: 'day' }, { n: 3, unit: 'day' }, { n: 5, unit: 'day' },
   { n: 1, unit: 'week' }, { n: 2, unit: 'week' }, { n: 3, unit: 'week' },
-  { n: 1, unit: 'month' }, { n: 2, unit: 'month' }, { n: 3, unit: 'month' }, { n: 6, unit: 'month' }, { n: 9, unit: 'month' },
+  { n: 1, unit: 'month' }, { n: 6, unit: 'week' }, { n: 2, unit: 'month' },
+  { n: 3, unit: 'month' }, { n: 6, unit: 'month' }, { n: 9, unit: 'month' },
   { n: 1, unit: 'year' },
 ];
-export const DEFAULT_STOP = 9; // 1 week
+export const TICKS = [0, 3, 6, 9, 12, 15];
+export const DEFAULT_STOP = 6; // 1 week
 
 export function stopLabel(s) {
   if (s.n === 1 && s.unit === 'day') return 'last 24 hours';

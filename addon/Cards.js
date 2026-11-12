@@ -61,9 +61,6 @@ function buildResultCard_(r, messageId, granted, historyId) {
   var card = CardService.newCardBuilder();  // no header: Gmail already shows "MailLens" above the card
 
   // 1. Risk assessment
-  // View full dashboard: first, directly under the add-on header (same button as on the Home screen).
-  card.addSection(CardService.newCardSection().addWidget(dashboardButtonSet_(historyId || messageId)));
-
   card.addSection(block_('Risk assessment', [assessmentWidget_(r, style),
     CardService.newTextParagraph().setText(ltr_(escapeHtml_(r.headline)))]));
 
@@ -93,7 +90,9 @@ function buildResultCard_(r, messageId, granted, historyId) {
       .setTextButtonStyle(CardService.TextButtonStyle.FILLED_TONAL)
       .setOnClickAction(CardService.newAction().setFunctionName('onShowTechnical')
         .setParameters({ requestId: String(r.request_id), messageId: String(messageId) })))
-    .addButton(reanalyzeButton_(messageId, CardService.TextButtonStyle.BORDERLESS, 'Re-analyze'))));
+    .addButton(reanalyzeButton_(messageId, CardService.TextButtonStyle.BORDERLESS, 'Re-analyze')))
+    // View full dashboard directly below View detailed analysis (same navy button as on the Home screen).
+    .addWidget(dashboardButtonSet_(historyId || messageId)));
   return card.build();
 }
 

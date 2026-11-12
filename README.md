@@ -129,9 +129,10 @@ install: `run-backend-docker.sh` builds it into the image.
 - **Directly:** `<your tunnel URL>/dashboard/` shows Detection Performance, How MailLens Works and a labelled
   **Demo Mode** (synthetic emails). Your own activity appears only when opened from Gmail.
 - **Tabs:** Overview (activity, search, and each email's assessment), Detection Performance, How MailLens Works.
-- **Scan inbox** (Overview) analyzes up to 50 of the newest inbox emails in the selected time range, skipping
+- **Scan inbox** (Overview) analyzes up to 50 of the newest inbox emails received in the time range chosen with the slider (1 hour to 1 year), skipping
   ones already analyzed. The dashboard can't read Gmail, so it opens your own Apps Script project as an
-  **owner-only web app** (`/dev` test URL, injected by `push-addon.sh`). That page runs as you with the
+  **owner-only web app** (an `/exec` deployment created and kept up to date by `push-addon.sh`; the dashboard runs it
+  in a hidden frame and offers a small Google window only if your browser or Google requires one). That page runs as you with the
   already-granted `gmail.readonly`, so no new scopes are needed. The first time, Google may ask you to authorize
   the project once. A short-lived scan ticket ties the scan to the dashboard's account: if the scan tab is
   signed in to a different Google account, the backend refuses it.

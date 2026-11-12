@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import ActivityChart from './ActivityChart.jsx';
-import { DEFAULT_STOP, STOPS, cutoffFor, filterByReceived, shortLabel, stopLabel } from './timefilter.js';
+import { DEFAULT_STOP, STOPS, TICKS, cutoffFor, filterByReceived, shortLabel, stopLabel } from './timefilter.js';
 import EmailAssessment from './Investigation.jsx';
 import { api } from './api.js';
 import { Panel, SectionHeader, State, VERDICTS, VERDICT_ORDER, VerdictBadge, fmtDate, splitSender } from './ui.jsx';
@@ -95,8 +95,6 @@ export default function Overview({ source, selected, onSelect, onBack, onClear, 
     </>
   );
 }
-
-const TICKS = [0, 5, 9, 12, 14, 17]; // 1h, 1d, 1w, 1mo, 3mo, 1y
 
 /** Time-range slider: discrete, log-like stops from 1 hour to 1 year (received time). */
 function RangeSlider({ index, onChange, label }) {

@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert';
 
 process.env.TZ = 'Asia/Jerusalem'; // a zone with DST; set before any Date is used
-const { STOPS, bucketByReceived, cutoffFor, filterByReceived, stopLabel } = await import('../src/timefilter.js');
+const { STOPS, TICKS, bucketByReceived, cutoffFor, filterByReceived, shortLabel, stopLabel } = await import('../src/timefilter.js');
 
 const at = (iso) => Date.parse(iso) / 1000;
 const NOW = at('2026-11-12T12:00:00Z');
@@ -19,6 +19,9 @@ test('slider covers 1 hour to 1 year with readable labels', () => {
   assert.strictEqual(stopLabel(stop(1, 'day')), 'last 24 hours');
   const spans = STOPS.map((s) => NOW - cutoffFor(s, NOW));
   assert.ok(spans.every((x, i) => i === 0 || x > spans[i - 1]), 'strictly increasing');
+  assert.deepStrictEqual(TICKS.map((i) => shortLabel(STOPS[i])), ['1h', '1d', '1w', '1mo', '3mo', '1y']);
+  assert.ok(TICKS.every((t, i) => i === 0 || t - TICKS[i - 1] === 3), 'markers evenly spaced');
+  for (const l of ['last 2 hours', 'last 6 hours', 'last 3 days', 'last 2 weeks', 'last month', 'last 2 months', 'last 6 months']) assert.ok(STOPS.some((s) => stopLabel(s) === l), l);
 });
 
 test('an old email analyzed today is placed by when it was received', () => {

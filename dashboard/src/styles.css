@@ -36,15 +36,15 @@ p { margin: 0; }
 .pad { padding: 12px 0; }
 
 /* ---------- layout: left sidebar */
-.shell { display: grid; grid-template-columns: 280px minmax(0, 1fr); min-height: 100vh; }
+.shell { display: grid; grid-template-columns: clamp(220px, 18vw, 256px) minmax(0, 1fr); min-height: 100vh; }
 .shell > * { min-width: 0; }
 .sidebar { background: var(--bg-2); border-right: 1px solid var(--border); padding: 26px 16px; display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh; }
 .brand { display: flex; align-items: center; gap: 12px; padding: 0 10px 28px; font-weight: 700; font-size: 18px; letter-spacing: .2px; }
-.brand small { display: block; color: var(--muted); font-weight: 600; font-size: 12.5px; letter-spacing: .5px; text-transform: uppercase; }
+.brand small { display: block; color: var(--muted); font-weight: 600; font-size: 13px; letter-spacing: .5px; text-transform: uppercase; }
 .logo { width: 34px; height: 34px; flex: none; border-radius: 9px; background: linear-gradient(140deg, #1aa898, #0f5e73); position: relative; box-shadow: 0 0 0 1px rgba(44,198,179,.35) inset; }
 .logo::after { content: ""; position: absolute; inset: 9px 10px; border: 2px solid #dffaf5; border-radius: 3px 3px 10px 10px; }
 .nav { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
-.nav a { display: flex; align-items: center; gap: 12px; padding: 12px 12px; white-space: nowrap; border-radius: 10px; color: var(--text-2); text-decoration: none; font-weight: 600; font-size: 16px; }
+.nav a { display: flex; align-items: center; gap: 12px; padding: 12px 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-radius: 10px; color: var(--text-2); text-decoration: none; font-weight: 600; font-size: 16px; }
 .nav a svg { width: 20px; height: 20px; fill: currentColor; opacity: .8; flex: none; }
 .nav a:hover { background: var(--surface); color: var(--text); }
 .nav a.active { background: var(--teal-dim); color: var(--text); box-shadow: inset 3px 0 0 var(--teal); }
@@ -54,7 +54,7 @@ p { margin: 0; }
 .acct-dot { width: 8px; height: 8px; flex: none; border-radius: 50%; background: var(--inc); }
 .acct-dot.ok { background: var(--teal); box-shadow: 0 0 0 3px var(--teal-dim); }
 .acct-dot.demo { background: var(--susp); }
-.main { padding: 40px clamp(16px, 4vw, 48px) 72px; max-width: 1140px; width: 100%; }
+.main { padding: clamp(24px, 3vw, 40px) clamp(16px, 3vw, 44px) 64px; max-width: 1160px; width: 100%; }
 
 /* ---------- headers, panels */
 .section-header { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px 24px; margin-bottom: 26px; flex-wrap: wrap; }
@@ -118,8 +118,8 @@ p { margin: 0; }
 .email-row:hover { background: var(--surface-2); }
 .email-row.is-context { box-shadow: inset 3px 0 0 var(--teal); }
 .email-text { display: flex; flex-direction: column; min-width: 0; }
-.email-subject { font-weight: 650; font-size: 16px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.email-sender { color: var(--muted); font-size: 14.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.email-subject { font-weight: 650; font-size: 16px; overflow-wrap: anywhere; }
+.email-sender { color: var(--muted); font-size: 14.5px; overflow-wrap: anywhere; }
 .email-date { color: var(--muted); font-size: 14.5px; white-space: nowrap; display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
 .from-gmail { color: var(--teal); font-size: 13px; font-weight: 650; }
 .scan { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; justify-content: flex-end; }
@@ -152,7 +152,8 @@ p { margin: 0; }
   padding: 10px 12px; font-size: 14px; display: flex; flex-direction: column; gap: 3px; white-space: nowrap; z-index: 5; box-shadow: 0 10px 28px rgba(0,0,0,.45); text-align: left; }
 .chart-axis { display: flex; gap: 5px; margin-left: 37px; padding: 8px 5px 0; font-size: 13px; color: var(--muted); overflow: hidden; }
 .chart { min-width: 0; overflow: hidden; }
-.chart-axis span { flex: 1; white-space: nowrap; overflow: visible; }
+.chart-axis { justify-content: space-between; }
+.chart-axis span { white-space: nowrap; }
 
 /* ---------- email assessment */
 .back { background: none; border: 0; color: var(--text-2); font-weight: 650; font-size: 16px; padding: 6px 0; margin-bottom: 14px; cursor: pointer; display: inline-flex; gap: 8px; }
@@ -304,8 +305,10 @@ p { margin: 0; }
 .range-ticks button.last { transform: translateX(calc(-100% + 11px)); }
 .range-ticks button.on, .range-ticks button:hover { color: var(--teal); }
 .range-panel .scan { justify-content: flex-end; flex-direction: row-reverse; padding-top: 16px; border-top: 1px solid var(--border); }
-@media (max-width: 520px) { .range-ticks button:nth-child(4) { display: none; } }
 .range-panel .scan-action { align-items: flex-start; }
 .meaning { display: grid; gap: 10px; font-size: 16.5px; color: var(--text-2); }
 .meaning b { color: var(--text); }
 .meaning-takeaway { margin-top: 6px; padding-top: 12px; border-top: 1px solid var(--border); color: var(--text); }
+.stage-panel h2 { font-size: 20px; margin: 0 0 10px; }
+.stage-panel .stage-text + .stage-text { margin-top: 10px; }
+.verdict-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
