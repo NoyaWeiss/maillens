@@ -15,7 +15,7 @@ cloudflared tunnel --no-autoupdate --url http://127.0.0.1:8787 > "$ROOT/.run/tun
 echo $! > "$ROOT/.run/tunnel.pid"
 URL=""
 for _ in $(seq 1 30); do
-  URL=$(grep -oE 'https://[a-z0-9-]+\.trycloudflare\.com' "$ROOT/.run/tunnel.log" | head -1 || true)
+  URL=$(LC_ALL=C grep -aoE 'https://[a-z0-9-]+\.trycloudflare\.com' "$ROOT/.run/tunnel.log" | tail -1 || true)
   [ -n "$URL" ] && break; sleep 1
 done
 echo "${URL:?tunnel did not come up; see .run/tunnel.log}" | tee "$ROOT/.run/url"

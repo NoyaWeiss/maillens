@@ -134,6 +134,7 @@ _CATEGORY = {
     "lookalike": "Look-alike sender domain",          # observed fact, not an inference
     "credential_phish": "Possible credential phishing",
     "consent_phish": "Possible consent phishing",
+    "pretext": "Possible pretext for fraud",
     "malware": "Risky attachment",                    # observed fact
     "deception": "Deceptive email",
 }
@@ -147,6 +148,7 @@ _SUMMARY = {
     "lookalike": "The sender's domain imitates one you correspond with.",
     "credential_phish": "This email asks you to sign in, and parts of it are deceptive.",
     "consent_phish": "A link asks you to give an app access to your email.",
+    "pretext": "An unfamiliar sender asks for an unexplained favor and asks you to keep it secret.",
     "malware": "An attachment is a file type that can run code or imitate a sign-in page.",
     "deception": "Parts of this email misrepresent who sent it or where it leads.",
 }
@@ -160,6 +162,7 @@ _IMPACT = {
     "lookalike": "Replies, payments or files could reach an impostor.",
     "credential_phish": "A password entered on the linked page could be stolen.",
     "consent_phish": "An app granted access could read and send your email, even without your password.",
+    "pretext": "Messages like this may be a first step toward a request for money, gift cards or data.",
     "malware": "Opening the attachment could run harmful code or show a fake sign-in page.",
     "deception": "Acting on this email could expose you to fraud.",
 }
@@ -175,6 +178,7 @@ _ACTIONS = {
     "credential_phish": [Action("Don't use the link", "If you need to sign in, type the site's address yourself."),
                          Action("Report it as phishing", "Use Gmail's \"Report phishing\" option.")],
     "malware": [Action("Don't open the attachment", "Report the email to your security team.")],
+    "pretext": [Action("Verify the sender another way", "Contact the person through a channel you already trust before replying.")],
     "consent_phish": [Action("Don't grant access", "Don't approve the app on the consent screen."),
                       Action("Remove it if you already did", "Revoke the app in your account's security settings.")],
     "deception": [Action("Verify the sender another way", "Use a channel you already trust before acting.")],
@@ -247,6 +251,7 @@ _DECISION = {
     "H-C": "The email asks for something hard to undo, and other signals support the concern. That makes it High risk.",
     "S-D": "One strong warning sign was found, but nothing else confirms it. That makes it Suspicious.",
     "S-A": "The email asks for something hard to undo. Nothing else looks wrong, but the request alone deserves verification.",
+    "S-P": "An unfamiliar sender asks for an unexplained favor and asks you to keep it secret. That combination is a common opening for fraud.",
     "INC": "The sender couldn't be verified, and the email contains a risky request or an anomaly. "
            "Rating it Low would be misleading, so the result is Inconclusive.",
     None: "No check found a contradiction between what the email claims and what was observed.",

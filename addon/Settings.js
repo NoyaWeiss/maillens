@@ -37,7 +37,8 @@ function serviceStatus_() {
     var code = resp.getResponseCode();
     status = code === 200 ? 'ready' : code === 401 ? 'key_rejected' : 'unavailable';
   } catch (err) {
-    status = 'unavailable';
+    // Apps Script refuses URLs outside the manifest's urlFetchWhitelist (F-09): say so explicitly.
+    status = /whitelist|allowlist|not allowed|permission/i.test(String(err && err.message)) ? 'blocked' : 'unavailable';
   }
   cache.put(STATUS_CACHE_KEY, status, STATUS_CACHE_SECONDS);
   return status;
@@ -47,6 +48,7 @@ var STATUS_VIEW = {
   ready: { icon: 'check_circle', color: '#188038', title: 'Analysis service ready', text: 'Connected and ready to analyze emails.' },
   unavailable: { icon: 'cloud_off', color: '#b06000', title: 'Analysis service unavailable', text: "MailLens can't reach its analysis service right now." },
   key_rejected: { icon: 'key_off', color: '#b06000', title: 'Setup needs attention', text: 'The analysis service did not accept the saved key.' },
+  blocked: { icon: 'block', color: '#c5221f', title: 'Service URL not permitted', text: 'This add-on only connects to its approved analysis service.' },
   setup: { icon: 'settings', color: '#5f6368', title: 'Setup required', text: "MailLens isn't connected to its analysis service yet." }
 };
 

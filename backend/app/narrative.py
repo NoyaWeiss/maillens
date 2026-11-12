@@ -19,6 +19,7 @@ ARCHETYPES = {
     "lookalike": "Look-alike domain impersonation",
     "credential_phish": "Credential phishing",
     "consent_phish": "Consent phishing",
+    "pretext": "Pretext request",
     "malware": "Malicious attachment",
     "deception": "Deceptive message",
     "none": "No attack pattern",
@@ -34,6 +35,7 @@ CONSEQUENCE = {
     "lookalike": "Anything you send or open goes to an attacker-controlled domain.",
     "credential_phish": "A password typed into the linked page goes straight to the attacker.",
     "consent_phish": "An app granted access could read and send your email without your password.",
+    "pretext": "Pretext messages like this often lead to a request for money, gift cards or data.",
     "malware": "Opening the file can run attacker code or show a fake sign-in page.",
     "deception": "The message misrepresents who sent it or where its links lead.",
 }
@@ -53,6 +55,8 @@ def archetype(d: Decision, ask: AskResult) -> str:
         return "account_takeover"
     if req in _REQUEST_ARCHETYPE:
         return _REQUEST_ARCHETYPE[req]
+    if d.gate == "S-P":
+        return "pretext"
     if any(f.kind == "link_oauth_consent" for f in d.kept):
         return "consent_phish"
     if "S5" in sigs and sigs["S5"].level >= 2:

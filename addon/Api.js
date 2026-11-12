@@ -16,7 +16,10 @@ function callAnalyze_(settings, payload, timing) {
       muteHttpExceptions: true,
       followRedirects: false
     });
-  } catch (err) {  // DNS failure, tunnel down, connection refused
+  } catch (err) {  // DNS failure, tunnel down, connection refused, or blocked by urlFetchWhitelist
+    if (/whitelist|allowlist|not allowed/i.test(String(err && err.message))) {
+      throw new Error('The MailLens backend address is not permitted by this add-on. No verdict was produced.');
+    }
     throw new Error('The MailLens backend is unreachable. No verdict was produced. (' +
       String(err && err.message || err).slice(0, 120) + ')');
   }

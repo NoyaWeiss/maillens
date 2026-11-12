@@ -105,12 +105,19 @@ URGENCY_CUES = {
 }
 
 
+# Explicit concealment from others (narrower than SECRECY: excludes a bare "confidential").
+CONCEALMENT = re.compile(r"\b(?:keep (?:this|it) (?:between us|quiet)|don'?t (?:tell|mention|share this with)|"
+                         r"be discreet|don'?t discuss)\b", re.IGNORECASE)
+PRETEXT_IDS = {"favor_probe", "channel_move"}
+
+
 @dataclass
 class AskResult:
     level: int = 0
     pattern: Pattern | None = None
     excerpt: str = ""
     source: str = ""          # "Subject" or "Body": where the quoted text came from
+    pretext_secrecy: bool = False  # F-19: pretext request + explicit concealment
     pressure: bool = False
     cues: list[str] | None = None
     note: str = ""
@@ -161,6 +168,7 @@ def s13_s14(ctx: Context) -> AskResult:
         out.note = "S14 pressure cues ignored: bulk mail"
         return out
     secrecy = bool(SECRECY.search(text))
+    out.pretext_secrecy = bool(out.pattern and out.pattern.id in PRETEXT_IDS and CONCEALMENT.search(text))
     out.cues = [name for name, rx in URGENCY_CUES.items() if re.search(rx, text, re.IGNORECASE)]
     if secrecy:
         out.cues.insert(0, "secrecy")

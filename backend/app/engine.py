@@ -79,7 +79,8 @@ def analyze(req: AnalyzeRequest, request_id: str) -> tuple[AnalyzeResponse, Deci
     if ask.note:
         notes.append(ask.note)
 
-    d = decide(findings, ask.level, ask.pressure, ctx.familiarity, auth_available=states["S1"] is CheckState.RAN)
+    d = decide(findings, ask.level, ask.pressure, ctx.familiarity, auth_available=states["S1"] is CheckState.RAN,
+               pretext_secrecy=ask.pretext_secrecy)
     arch = archetype(d, ask)
 
     ran = sum(1 for s in states.values() if s is CheckState.RAN)

@@ -51,7 +51,8 @@ def dedup(findings: list[Finding]) -> tuple[list[Finding], list[Finding]]:
     return list(kept.values()), also
 
 
-def decide(findings: list[Finding], A: int, P: bool, N: str, auth_available: bool) -> Decision:
+def decide(findings: list[Finding], A: int, P: bool, N: str, auth_available: bool,
+           pretext_secrecy: bool = False) -> Decision:
     kept, also = dedup(findings)
     D = max((f.level for f in kept), default=0)                         # R2: group maxima, no summing
     strong_entities = {f.entity for f in kept if f.level >= 2}
@@ -70,6 +71,10 @@ def decide(findings: list[Finding], A: int, P: bool, N: str, auth_available: boo
         verdict, gate, pathway = Verdict.SUSPICIOUS, "S-D", "Deception"
     elif A == 3:
         verdict, gate, pathway = Verdict.SUSPICIOUS, "S-A", "Request in context"
+    elif pretext_secrecy and N == "1":
+        # F-19 (Phase 3b): a BEC-style pretext (unexplained favor / move off email) with explicit secrecy
+        # from an unfamiliar sender. Suspicious only, never High; generic "confidential" doesn't count.
+        verdict, gate, pathway = Verdict.SUSPICIOUS, "S-P", "Request in context"
     else:
         verdict = Verdict.LOW
 
@@ -99,6 +104,7 @@ def explain_gate(d: Decision) -> str:
         "H-C": f"High via H-C: an irreversible request (S13) with corroboration ({', '.join(d.corroborators)}).",
         "S-D": f"Suspicious: a strong finding{sig}, without a request or second entity to corroborate it.",
         "S-A": "Suspicious: an irreversible request (S13). Verify it out-of-band, even from a known sender.",
+        "S-P": "Suspicious: an unfamiliar sender asks for an unexplained favor and asks you to keep it secret.",
         "INC": "Inconclusive: the sender can't be verified (no authentication results) and the message "
                "contains an elevated request or an anomaly.",
     }.get(d.gate or "", "Low: no gate fired.")

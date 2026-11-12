@@ -195,3 +195,21 @@ def test_reported_speech_cannot_hide_a_real_request():
 def test_reported_speech_guard_is_not_tied_to_bulk_mail():
     real = "<p>Please note our bank details have changed; kindly wire the payment to our new account.</p>"
     assert ask_level(real, bulk=True) == 3     # a newsletter header never suppresses a genuine request
+
+
+# ------------------------------------------------------------------ F-19 pretext + secrecy (Suspicious only)
+def test_f19_pretext_with_concealment_from_unfamiliar_sender_is_suspicious():
+    r = run("Avi Levin CEO <avi.levin@corp-mail.example>", relationship=REL,
+            html="<p>Are you available? I need a quick favor today. Don't discuss it with anyone yet.</p>")
+    assert (r.verdict, r.gate) == ("SUSPICIOUS", "S-P")
+
+
+def test_f19_stays_narrow():
+    base = "<p>Are you available for a quick call this week?</p>"
+    assert run("Ron <ron.biz@gmail.com>", relationship=REL, html=base).verdict == "LOW"            # no secrecy
+    rec = "<p>This role is strictly confidential. Are you available for a quick call?</p>"
+    assert run("Talent <jobs@recruit.example>", relationship=REL, html=rec).verdict == "LOW"       # bare 'confidential'
+    known = {**REL, "sender_sent_count": 3}
+    sec = "<p>Are you available? Quick favor, keep this between us.</p>"
+    assert run("Tal <tal@corp.example>", relationship=known, html=sec).verdict == "LOW"            # known sender
+    assert run("X <x@unknown.example>", html=sec).verdict == "LOW"                                 # familiarity unknown

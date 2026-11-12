@@ -41,5 +41,8 @@
         }
       ]
     }
-  }
+  },
+  "urlFetchWhitelist": [
+    "https://gmail.googleapis.com/"
+  ]
 }

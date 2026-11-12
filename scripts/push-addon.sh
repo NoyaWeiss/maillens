@@ -16,4 +16,19 @@ print("var DEV_DEFAULTS = " + json.dumps({"url": os.environ["URL"], "apiKey": os
 PY
 )
 echo "build: ${MAILLENS_BUILD:-dev}"
-cd "$ROOT" && clasp push --force
+# F-09: allow outbound fetches ONLY to this exact backend origin and the Gmail API. The committed
+# manifest lists just the Gmail API; the backend origin is injected for this push, then restored.
+cp "$ROOT/addon/appsscript.json" "$ROOT/.run/appsscript.committed.json"
+trap 'cp "$ROOT/.run/appsscript.committed.json" "$ROOT/addon/appsscript.json"' EXIT
+URL="$URL" python3 - "$ROOT/addon/appsscript.json" <<'PY'
+import json, os, sys
+from urllib.parse import urlsplit
+u = urlsplit(os.environ["URL"])
+assert u.scheme == "https" and u.hostname and not u.path.strip("/"), "backend URL must be an https origin"
+m = json.load(open(sys.argv[1]))
+m["urlFetchWhitelist"] = ["https://gmail.googleapis.com/", f"https://{u.hostname}/"]  # top-level manifest field
+json.dump(m, open(sys.argv[1], "w"), indent=2)
+print("allow-list:", m["urlFetchWhitelist"])
+PY
+cd "$ROOT" && clasp push --force | tee "$ROOT/.run/push.log"
+grep -q "Pushed" "$ROOT/.run/push.log" || { echo "PUSH FAILED"; exit 1; }
