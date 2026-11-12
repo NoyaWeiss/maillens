@@ -111,4 +111,4 @@ printf "  2. In Gmail (reload it), open any email and click the MailLens icon in
 printf "     -> Authorize access -> 'Google hasn't verified this app' -> Advanced -> Go to MailLens -> Allow\n"
 printf "\nSuccess looks like: the MailLens Home screen says 'Analysis service ready', and an opened email shows a verdict.\n"
 [ "$MODE" = "--with-demo" ] && printf "Demo mailbox: open the seeder link above, choose seedDemoMailbox, click Run once.\n"
-printf "If the tunnel restarts later, re-run $ROOT/scripts/setup.sh (it re-points the add-on to the new URL).\n"
+printf "After a restart, sleep or tunnel drop: run $ROOT/scripts/start.sh (restores Gmail analysis). Stop: $ROOT/scripts/stop.sh\n"

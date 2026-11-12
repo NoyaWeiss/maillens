@@ -53,6 +53,7 @@ fi
 [ -f "$ROOT/.clasp.json" ] || { echo "No Apps Script project yet: run scripts/setup-addon.sh <your tunnel URL> first."; exit 1; }
 cd "$ROOT" && clasp --user "$CLASP_USER" push --force | tee "$ROOT/.run/push.log"
 grep -q "Pushed" "$ROOT/.run/push.log" || { echo "PUSH FAILED"; exit 1; }
+echo "$URL" > "$ROOT/.run/addon-url"   # the backend URL your add-on now uses (read by scripts/start.sh)
 # Keep the scan web-app deployment on the code just pushed (create it once, then update in place).
 if [ "${DRY_RUN:-0}" != "1" ]; then
   if [ -n "$SCAN_ID" ]; then

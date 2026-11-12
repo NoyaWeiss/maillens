@@ -102,6 +102,28 @@ All checked? MailLens is installed.
 
 ---
 
+## Start, stop and recover
+
+MailLens runs on your computer, so Gmail analysis works only while your computer is on, Docker is running and
+the tunnel is up. The free tunnel gets a **new address every time it restarts** (after a reboot, sleep or network
+change), and your add-on only talks to the address it was approved for. Setup is a one-time step; after that:
+
+| When | Run | What it does |
+|---|---|---|
+| After a restart, or Gmail shows **"Analysis service unavailable"** | `~/maillens/scripts/start.sh` | Starts Docker and the backend, reuses the tunnel if it still works or opens a new one, re-points **your** add-on to the new address, then checks it end to end |
+| To stop MailLens | `~/maillens/scripts/stop.sh` | Stops the tunnel and the backend. Your API key, history and add-on are kept |
+
+`start.sh` is safe to run at any time and takes under a minute (a new tunnel address can take 1–2 minutes to
+come online). It doesn't rebuild anything or ask for a Google login, and it never creates a new Apps Script
+project. It only updates the add-on's approved address when the address has changed, and only with the Google
+account you confirmed during setup. The add-on's own settings stay locked, so nobody can redirect it from Gmail.
+After it says **MailLens is ready**, reload Gmail. No new Google approval is needed.
+
+For an address that never changes, use your own HTTPS endpoint (for example a named Cloudflare tunnel on your
+domain): `MAILLENS_TUNNEL_URL=https://your-host ~/maillens/scripts/start.sh`.
+
+---
+
 ## Evaluation
 
 Frozen engine, pre-registered synthetic benchmark of 200 emails (100 malicious, 100 legitimate):
@@ -126,7 +148,7 @@ cd ~/maillens && .tools/bin/node --test addon/tests/ dashboard/tests/     # or: 
   - Low risk is not a guarantee.
   - Attachment contents, text in images and domain reputation are not analyzed.
   - Request detection is English only.
-  - Tunnel addresses change when the tunnel restarts; re-run setup.
+  - Runs on your computer: tunnel addresses change when the tunnel restarts; run `scripts/start.sh`.
 
 More: [docs/SECURITY_QA_REPORT.md](docs/SECURITY_QA_REPORT.md) · [docs/TESTING_PLAN.md](docs/TESTING_PLAN.md) ·
 [docs/RELIABILITY.md](docs/RELIABILITY.md)
@@ -139,9 +161,10 @@ More: [docs/SECURITY_QA_REPORT.md](docs/SECURITY_QA_REPORT.md) · [docs/TESTING_
 | `npm ERR! EACCES` | Don't install clasp globally or with sudo; setup installs it in `~/maillens/.tools` |
 | `destination path 'maillens' already exists` | Use the Step 2 command; it updates your existing copy instead |
 | `no such file or directory: ./scripts/setup.sh` | Run it by its full path: `~/maillens/scripts/setup.sh` |
-| "Docker is installed but not running" | Open Docker Desktop, wait until it's running, then re-run setup |
+| "Docker is installed but not running" | Open Docker Desktop, wait until it's running, then re-run the command |
 | Setup says to turn on the Apps Script API | Step 4.1, wait about a minute, then re-run setup |
-| "Analysis service unavailable" in Gmail | The tunnel stopped (for example after a restart): re-run `~/maillens/scripts/setup.sh` |
+| "Analysis service unavailable" in Gmail | The tunnel stopped (for example after a restart or sleep): run `~/maillens/scripts/start.sh`, then reload Gmail |
+| `start.sh`: "the MailLens Google login … doesn't match" | Run `~/maillens/scripts/setup.sh` and confirm your test account |
 | No MailLens icon in Gmail | Step 4.4 (install the test deployment), then reload Gmail |
 | "Refusing: … belongs to another MailLens checkout" | Another copy uses that port or name: re-run with `MAILLENS_PORT=8788 MAILLENS_CONTAINER=maillens2 MAILLENS_VOLUME=maillens2-data` before the command |
 | Backend logs | `docker logs maillens` |
