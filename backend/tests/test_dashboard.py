@@ -89,3 +89,23 @@ def test_evaluation_endpoint_serves_committed_primary_benchmark():
     d = r.json()
     assert d["benchmark"] == m["primary_evaluation"] and d["overall"]["recall"] == m[d["benchmark"]]["overall"]["recall"]
     assert sum(x["n"] for x in d["by_category"]) == 200
+
+
+def test_gmail_addon_message_ids_with_prefix_are_recorded_and_selectable():
+    # Gmail add-on event ids are opaque and can carry a prefix and colon (e.g. "msg-f:<digits>").
+    c = client()
+    acct = "d" * 64
+    for mid in ("msg-f:1849376123456789012", "msg-a:r-8812345", "18c3f2a9b7d41e05"):
+        analyze(c, acct, mid, subject=f"S {mid}")
+    h, info, _ = session(c, acct, "msg-f:1849376123456789012")
+    emails = c.get("/v1/dashboard/emails", headers=h).json()["emails"]
+    assert len(emails) == 3
+    assert c.get(f"/v1/dashboard/emails/{info['context']}", headers=h).json()["subject"] == "S msg-f:1849376123456789012"
+
+
+def test_unusable_ids_are_rejected_without_logging_values(caplog):
+    c = client()
+    analyze(c, "e" * 64, "bad id with spaces")
+    assert "bad id" not in caplog.text and "history not recorded" in caplog.text
+    r = c.post("/v1/dashboard/launch", json={"account": "e" * 64, "message": "x" * 300}, headers=KEY)
+    assert r.status_code == 422

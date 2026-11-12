@@ -27,7 +27,25 @@ DEV = os.environ.get("MAILLENS_DEV_PROBE") == "1"
 # Synthetic demo-mailbox Message-IDs only (see demo/build_seed.py); real mail never matches.
 _DEMO_ID = re.compile(r"^<([a-z0-9]{1,8})\.maillens-demo@mail\.example>$")
 _ACCOUNT_KEY = re.compile(r"^[A-Za-z0-9_-]{32,128}$")
-_GMAIL_ID = re.compile(r"^[A-Za-z0-9_-]{6,64}$")
+# Gmail's add-on message id is opaque (it is not always the 16-hex Gmail API id; it can carry a prefix
+# such as "msg-f:"). It is only ever HMAC'd, never parsed or displayed, so accept any printable token.
+_GMAIL_ID = re.compile(r"^[!-~]{1,200}$")
+
+
+def _shape(value: str) -> str:
+    """Character-class outline of an identifier for diagnostics: e.g. 'a3-a1:d19'. Never the value itself."""
+    out, prev, n = [], "", 0
+    for ch in value[:200]:
+        c = "d" if ch.isdigit() else "a" if ch.isalpha() else ch
+        if c == prev and c in "ad":
+            n += 1
+            continue
+        if prev:
+            out.append(prev + (str(n) if prev in "ad" else ""))
+        prev, n = c, 1
+    if prev:
+        out.append(prev + (str(n) if prev in "ad" else ""))
+    return "".join(out)[:60]
 _ROOT = Path(__file__).resolve().parents[2]
 DATA_DIR = Path(os.environ.get("MAILLENS_DATA_DIR", _ROOT / "backend" / "data"))
 DASHBOARD_DIR = Path(os.environ.get("MAILLENS_DASHBOARD_DIR", _ROOT / "dashboard" / "dist"))
@@ -89,6 +107,7 @@ def create_app() -> FastAPI:
     async def on_validation_error(_: Request, exc: RequestValidationError) -> JSONResponse:
         # Report where validation failed, never the offending (attacker-controlled) value.
         fields = [".".join(str(p) for p in e["loc"]) for e in exc.errors()][:10]
+        log.warning("validation failed path=%s fields=%s", _.url.path, ",".join(fields))
         return JSONResponse(status_code=422, content={"detail": "invalid request", "fields": fields})
 
     @app.exception_handler(Exception)
@@ -113,10 +132,14 @@ def create_app() -> FastAPI:
         request_id = uuid.uuid4().hex[:12]
         resp, decision = engine.analyze(req, request_id)
         # Account history (dashboard): only when the add-on sends a well-formed account key and message id.
-        if x_maillens_account and x_maillens_message and _ACCOUNT_KEY.match(x_maillens_account) \
-                and _GMAIL_ID.match(x_maillens_message):
+        acct_ok = bool(x_maillens_account and _ACCOUNT_KEY.match(x_maillens_account))
+        msg_ok = bool(x_maillens_message and _GMAIL_ID.match(x_maillens_message))
+        if acct_ok and msg_ok:
             history.record(x_maillens_account, x_maillens_message, req.message.subject or "(no subject)",
                            req.message.from_header or "", resp.model_dump(mode="json"))
+        elif x_maillens_account or x_maillens_message:  # sent but unusable: log shapes only, never values
+            log.warning("history not recorded account=%s message=%s", "ok" if acct_ok else _shape(x_maillens_account or "") or "missing",
+                        "ok" if msg_ok else _shape(x_maillens_message or "") or "missing")
         # Log decisions only, never message content or addresses.
         demo = ""
         if DEV and (m := _DEMO_ID.match(req.message.message_id or "")):
