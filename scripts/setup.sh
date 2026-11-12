@@ -13,7 +13,8 @@
 # enabling the Apps Script API, installing the test deployment, and authorizing the add-on in Gmail.
 set -uo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-cd "$ROOT"
+cd "$ROOT"                       # works from any directory: ~/maillens/scripts/setup.sh
+export PATH="$ROOT/.tools/bin:$PATH"   # tools installed by scripts/install-tools.sh
 MODE="${1:-}"
 B=$'\033[1m'; G=$'\033[32m'; Y=$'\033[33m'; R=$'\033[31m'; N=$'\033[0m'
 step() { printf "\n${B}== %s${N}\n" "$1"; }
@@ -24,17 +25,18 @@ need() { command -v "$1" >/dev/null 2>&1 || { MISSING+=("$1: $2"); return 1; }; 
 
 step "1/4 Checking prerequisites"
 MISSING=()
-need docker "install Docker Desktop: https://www.docker.com/products/docker-desktop/"
-need python3 "install Python 3.9+: https://www.python.org/downloads/"
-need curl "install curl"
-[ -z "${MAILLENS_TUNNEL_URL:-}" ] && need cloudflared "install cloudflared: https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/ (macOS: brew install cloudflared)"
-if [ "$MODE" != "--backend-only" ]; then
-  need node "install Node.js 18+: https://nodejs.org/"
-  need clasp "install clasp: npm install -g @google/clasp"
-fi
-[ ${#MISSING[@]} -eq 0 ] || { printf "${R}Missing prerequisites:${N}\n"; printf "  - %s\n" "${MISSING[@]}"; fail "install the items above, then re-run ./scripts/setup.sh"; }
-docker info >/dev/null 2>&1 || fail "Docker is installed but not running: start Docker Desktop, then re-run."
-ok "prerequisites found"
+CLT="macOS: run  xcode-select --install  (Apple Command Line Tools); Linux: install it with your package manager"
+need docker "Docker Desktop: https://www.docker.com/products/docker-desktop/ (install, open it once, wait until it says 'running')"
+need python3 "python3 -> $CLT"
+need curl "curl -> $CLT"
+need tar "tar -> $CLT"
+[ ${#MISSING[@]} -eq 0 ] || { printf "${R}Install these first (setup can't do it for you):${N}\n"; printf "  - %s\n" "${MISSING[@]}"; fail "then re-run: $ROOT/scripts/setup.sh"; }
+docker info >/dev/null 2>&1 || fail "Docker is installed but not running: open Docker Desktop, wait until it is running, then re-run."
+TOOLS=()
+[ -z "${MAILLENS_TUNNEL_URL:-}" ] && TOOLS+=(cloudflared)
+[ "$MODE" != "--backend-only" ] && TOOLS+=(node clasp)
+[ ${#TOOLS[@]} -eq 0 ] || ./scripts/install-tools.sh "${TOOLS[@]}" || fail "a required tool could not be installed (see above)"
+ok "prerequisites ready"
 
 step "2/4 Backend and dashboard (Docker, http://127.0.0.1:${MAILLENS_PORT:-8787})"
 ./scripts/run-backend-docker.sh || fail "the backend did not start; see: docker logs ${MAILLENS_CONTAINER:-maillens}"
@@ -63,17 +65,17 @@ fi
 step "4/4 Gmail add-on (your own Apps Script project)"
 if [ ! -f "$HOME/.clasprc.json" ]; then
   todo "Google login needed once: a browser window opens for 'clasp login'. Use your TEST Google account."
-  read -r -p "   Press Enter to continue... " _
-  clasp login || fail "clasp login did not complete; re-run ./scripts/setup.sh"
+  read -r -p "   Press Enter to continue... " _ || fail "Google login needs an interactive terminal: run $ROOT/scripts/setup.sh in Terminal."
+  clasp login || fail "clasp login did not complete; re-run $ROOT/scripts/setup.sh"
 fi
 OUT="$(./scripts/setup-addon.sh "$URL" 2>&1)"; STATUS=$?
 echo "$OUT" | grep -E "allow-list|Pushed|Install it" | sed 's/^/   /'
 if [ $STATUS -ne 0 ]; then
   if echo "$OUT" | grep -qi "usersettings\|Apps Script API"; then
-    todo "Turn ON 'Google Apps Script API' at https://script.google.com/home/usersettings (wait ~1 minute), then re-run ./scripts/setup.sh"
+    todo "Turn ON 'Google Apps Script API' at https://script.google.com/home/usersettings (wait ~1 minute), then re-run $ROOT/scripts/setup.sh"
     exit 1
   fi
-  echo "$OUT" | tail -5; fail "the add-on upload failed (details above); fix and re-run ./scripts/setup.sh"
+  echo "$OUT" | tail -5; fail "the add-on upload failed (details above); fix and re-run $ROOT/scripts/setup.sh"
 fi
 SID="$(python3 -c "import json;print(json.load(open('.clasp.json'))['scriptId'])")"
 ok "add-on uploaded to your Apps Script project"
@@ -90,4 +92,4 @@ printf "  2. In Gmail (reload it), open any email and click the MailLens icon in
 printf "     -> Authorize access -> 'Google hasn't verified this app' -> Advanced -> Go to MailLens -> Allow\n"
 printf "\nSuccess looks like: the MailLens Home screen says 'Analysis service ready', and an opened email shows a verdict.\n"
 [ "$MODE" = "--with-demo" ] && printf "Demo mailbox: open the seeder link above, choose seedDemoMailbox, click Run once.\n"
-printf "If the tunnel restarts later, re-run ./scripts/setup.sh (it re-points the add-on to the new URL).\n"
+printf "If the tunnel restarts later, re-run $ROOT/scripts/setup.sh (it re-points the add-on to the new URL).\n"

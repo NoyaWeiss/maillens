@@ -3,7 +3,7 @@
 # Secrets.js is gitignored; it only ever goes to the private Apps Script project.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-export PATH="$HOME/.local/opt/node/bin:$HOME/.local/bin:$PATH"
+export PATH="$ROOT/.tools/bin:$HOME/.local/bin:$PATH"   # .tools: installed by scripts/install-tools.sh
 mkdir -p "$ROOT/.run"
 URL="${1:-$(cat "$ROOT/.run/url")}"
 KEY="$(grep '^MAILLENS_API_KEY=' "$ROOT/backend/.env" | cut -d= -f2-)"
