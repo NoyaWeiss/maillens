@@ -198,7 +198,7 @@ node addon/tests/contract.mjs http://127.0.0.1:8787 "$(grep MAILLENS_API_KEY bac
 
 | Suite | Count | What it covers |
 |---|---|---|
-| Backend | 233 tests | per-signal must-fire / must-not-fire; engine invariants (exhaustive grid); the demo scenarios; adversarial input; grounding of explanations; a decision snapshot proving presentation changes never alter verdicts |
+| Backend | 241 tests | per-signal must-fire / must-not-fire; engine invariants (exhaustive grid); the demo scenarios; adversarial input; grounding of explanations; a decision snapshot proving presentation changes never alter verdicts |
 | Add-on | 73 tests | every card rendered for real backend responses through a strict CardService double (Gmail's render-time rules), hostile-string escaping, failure paths |
 | Development cases | 41 pre-registered, labelled (`backend/tests/phase3/`) | Ground truth committed before the first run. Baseline: 11/20 malicious detected, 3 false positives. Now: 18/20 detected, 0 false positives. **Development tests, not a benchmark;** see `docs/TESTING_PLAN.md` |
 
@@ -241,7 +241,7 @@ docs/       Design and verification documents
 | Document | Contents |
 |---|---|
 | `docs/SECURITY_QA_REPORT.md` | Phase 3 audit: findings, fixes, PASS / FAIL / NOT VERIFIED |
-| `docs/EVALUATION_REPORT.md` | **Primary evaluation:** v2 holdout (200 new synthetic cases, frozen engine): precision 0.98, recall 0.47, FPR 0.01; original-vs-improved comparison; failure patterns. Historical v1: `docs/EVALUATION_REPORT_v1.md` |
+| `docs/EVALUATION_REPORT.md` | **Primary evaluation:** v3 holdout (200 new synthetic cases, frozen engine): precision 1.00, recall 0.40, FPR 0.00; development-vs-holdout gains across three rounds; failure patterns. History: `EVALUATION_REPORT_v2.md`, `EVALUATION_REPORT_v1.md` |
 | `docs/TESTING_PLAN.md` | Development testing vs. independent evaluation, evaluation policy |
 | `docs/RELIABILITY.md` | Measured latency in real Gmail, stall analysis |
 | `docs/UI_PROPOSAL.md` | Card design decisions and CardService constraints |
